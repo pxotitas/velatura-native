@@ -1,0 +1,27 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local state, logs and secrets
+.env
+.env.*
+!.env.example
+*.log
+*.pid
+*.sock
+.cache/
+state/
+data/
+
+# Generated screenshots / benchmarks
+artifacts/
+benchmarks/out/
+screenshots/tmp/
