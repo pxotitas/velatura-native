@@ -155,3 +155,7 @@ Ao terminar uma tarefa:
 6. informar limitações e próximos passos.
 
 Não criar autostart, não encerrar Quickshell e não substituir a instalação atual. O shell original deve continuar disponível até aprovação explícita do usuário.
+
+
+## Exigência absoluta: paridade 1:1
+Leia docs/PARITY_CONTRACT.md antes de implementar. Sua missão não é fazer uma versão mínima. Cada serviço, ação, estado, erro, integração, atalho, dado persistido e comando IPC do original deve ter equivalente nativo. Não simplifique nem remova funções difíceis. O catálogo em docs/SERVICE_CATALOG.md é índice, não substitui leitura integral dos QML. O inventário de scripts também não substitui auditoria de cada script. Nenhum mock conta como funcionalidade entregue. Não marque um serviço como concluído sem validar efeitos reais no sistema e todos os seus estados relevantes.

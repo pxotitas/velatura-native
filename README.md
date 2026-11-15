@@ -20,6 +20,14 @@ Não é um redesign nem um shell inspirado no Velatura. A aplicação nova deve 
 - docs/ARCHITECTURE.md — arquitetura proposta e contratos entre camadas.
 - docs/SOURCE_INVENTORY.md — mapa do projeto original e caminhos de referência.
 - docs/PORTING_MATRIX.md — matriz de paridade funcional.
+- docs/PARITY_CONTRACT.md — contrato obrigatório de paridade 1:1; define o que significa reproduzir o Velatura integralmente.
+- docs/SERVICE_CATALOG.md — inventário dos serviços QML, APIs internas e consumidores.
+- docs/SCRIPT_CATALOG.md — scripts auxiliares, imports e ferramentas externas.
+- docs/DEPENDENCY_MAP.md — dependências e integrações de sistema.
+- docs/IPC_API.md — comandos públicos do Velatura original.
+- docs/SERVICE_GRAPH.md — acoplamento entre serviços e lifecycle observado.
+- docs/SETTINGS_SCHEMA.md — todas as chaves e defaults de configuração.
+- docs/FEATURE_SURFACE_MAP.md — inventário de módulos, painéis, settings e faces de desktop.
 - docs/DECISIONS.md — decisões técnicas e pendências.
 - docs/TASKS.md — backlog e estado real do trabalho.
 

@@ -49,3 +49,8 @@ Nenhum item começa como concluído. A auditoria estrutural inicial não equival
 - VERIFIED exige teste real ou automatizado documentado.
 - Recursos externos podem exigir token, portal, daemon ou permissão; documentar pré-requisitos.
 - Itens bloqueados devem ter motivo, impacto e caminho de resolução.
+
+
+## Regra de paridade 1:1
+
+Esta matriz deve acompanhar o contrato em docs/PARITY_CONTRACT.md. Todos os recursos do Velatura original devem ser portados integralmente. Não reduzir escopo, remover estados, trocar interações por placeholders nem marcar UI isolada como implementação funcional. Cada linha deve evoluir de NOT AUDITED para AUDITED, IN PROGRESS, IMPLEMENTED e VERIFIED com evidências; BLOCKED exige motivo e plano.

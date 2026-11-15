@@ -127,3 +127,10 @@ A auditoria inicial mapeia estrutura e componentes principais, mas não substitu
 5. comportamento visual esperado;
 6. cenários de erro;
 7. teste de paridade.
+
+
+## Auditoria técnica inicial (15/11/2026)
+
+A varredura estática identificou 61 serviços QML ativos e 28 scripts Python ativos, excluindo arquivos .new, .bak e .before-*. A lista de funções, propriedades, imports, mecanismos, comandos estáticos e consumidores está em SERVICE_CATALOG.md. Scripts e ferramentas externas estão em SCRIPT_CATALOG.md; integrações por domínio em DEPENDENCY_MAP.md; API IPC em IPC_API.md.
+
+A contagem de consumidores é baseada em referências textuais entre QML ativos; pode incluir comentários e não prova execução em runtime. A varredura não resolve imports dinâmicos, singletons lazy, comandos montados em runtime ou todos os endpoints. É um mapa de auditoria, não certificação de completude.

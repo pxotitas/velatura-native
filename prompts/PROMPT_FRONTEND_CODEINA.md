@@ -171,3 +171,7 @@ Um componente não está pronto só porque compila. Deve:
 8. ser testado em Niri/Wayland ou marcado claramente como não validado.
 
 Não instalar, iniciar automaticamente ou substituir o Velatura atual. Trabalhe exclusivamente no repositório velatura-native e em configuração de teste isolada.
+
+
+## Exigência absoluta: paridade visual e interativa 1:1
+Leia docs/PARITY_CONTRACT.md. Não faça redesign, versão lite ou shell genérico. Reproduza todos os componentes, painéis, módulos, estados vazios, menus, hover, atalhos, regras de foco, dimensões, tipografia, ícones, materiais e animações observáveis no original. Não remova componentes porque são difíceis de desenhar. Um botão precisa executar a ação real via backend; placeholders e mocks são apenas temporários e nunca podem ser marcados como concluídos. Compare cada superfície com o QML e screenshots originais. O design.md é o mapa inicial, não autorização para inventar detalhes que ainda não foram auditados.

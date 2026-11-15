@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** preparação documental concluída; implementação ainda não iniciada.
+**Estado geral:** inventário estático inicial e contrato 1:1 documentados; auditoria funcional profunda ainda em andamento; implementação ainda não iniciada.
 
 ## Fase 0 — Preparação
 
@@ -11,8 +11,19 @@
 - [x] Criar prompt de frontend para Codeína.
 - [x] Criar design.md inicial baseado nos tokens e componentes reais.
 - [x] Criar matriz de portabilidade inicial.
+- [x] Inventariar serviços QML ativos, símbolos e consumidores.
+- [x] Catalogar scripts Python e primeiras dependências.
+- [x] Extrair targets e verbos da API IPC original.
+- [x] Criar mapa inicial de dependências do sistema.
+- [x] Mapear referências entre serviços e lifecycle de startup observado.
+- [x] Extrair chaves e defaults do schema JsonAdapter.
+- [x] Catalogar módulos, painéis, settings e faces visuais.
 - [ ] Validar documentação visual com screenshots reais de cada superfície.
 - [ ] Completar auditoria linha a linha dos serviços e scripts.
+- [ ] Validar comandos externos e endpoints lendo cada script integralmente.
+- [ ] Mapear eventos, sinais, timers e lifecycle de cada serviço.
+- [ ] Confirmar dependências e comportamento degradado no hardware real.
+- [ ] Fechar contratos Rust tipados por domínio com Codeína.
 
 ## Fase 1 — Auditoria e especificação
 

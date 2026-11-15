@@ -91,3 +91,7 @@ Um recurso só pode ser marcado como concluído se foi comparado com o original,
 ## 10. Comunicação
 
 Ser explícito sobre o que foi realmente feito. Nunca dizer que algo foi instalado, testado, integrado ou concluído sem evidência. Registrar decisões e bloqueios em arquivos do repositório para que outro agente possa continuar sem depender do histórico do chat.
+
+
+## Regra obrigatória de paridade 1:1
+Leia docs/PARITY_CONTRACT.md. O objetivo é reproduzir o Velatura original integralmente, não simplificar ou redesenhar. Nenhum recurso, estado, ação, atalho, setting, menu, detalhe visual, animação, integração, persistência ou comportamento multi-monitor pode ser omitido silenciosamente. UI sem funcionalidade real não é portabilidade. Um recurso só é VERIFIED com critérios e evidências de paridade documentados. Se houver bloqueio, registrar e pedir decisão; não inventar substituição.
