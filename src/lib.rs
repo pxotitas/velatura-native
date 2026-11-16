@@ -7,3 +7,5 @@ pub mod niri;
 pub mod niri_actions;
 pub mod niri_outputs;
 pub mod niri_process;
+
+pub mod niri_session;

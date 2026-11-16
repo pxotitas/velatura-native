@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui redutor Niri, supervisor do event stream, fila serial de actions e consulta/normalização de outputs com debounce/coalescing. Integração GDK/GTK de hotplug/geometry, lifecycle, UI visual e validação ampla de runtime/paridade ainda pendentes. Nenhuma funcionalidade marcada como VERIFIED.
+**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada (event stream + reducer + outputs + actions), além de refresh acionado por WorkspacesChanged e ciclo de vida RAII próprio. Integração GDK/GTK de hotplug/geometry, lifecycle global da aplicação, UI visual e validação ampla de runtime/paridade ainda pendentes. Nenhuma funcionalidade marcada como VERIFIED.
 
 ## Fase 0 — Preparação
 
@@ -89,10 +89,10 @@
 - [x] Implementar `niri msg --json outputs`, normalização equivalente a monitors.py, primary/internal/description helpers, timeout, debounce de 120ms, coalescing, cancelamento e refresh acionado por WorkspacesChanged; `request_refresh()` aguarda ligação aos sinais GDK/GTK de hotplug/geometry.
 - [ ] Logging e diagnóstico.
 - [ ] Configuração e schema versionado.
-- [ ] Event bus.
-- [ ] Ciclo de vida.
-- [ ] Adapter Niri.
-- [ ] Adapter de monitores.
+- [x] Canal de eventos da sessão Niri: snapshots coerentes, sinais do compositor, diagnósticos, erros de protocolo, outputs e resultados de actions.
+- [x] Ciclo de vida RAII da sessão Niri: inicialização coordenada, parada explícita e join dos workers. Lifecycle global da aplicação permanece pendente.
+- [x] Adapter de sessão Niri (event stream + reducer + actions). Abstração genérica de compositor permanece pendente.
+- [x] Adapter de outputs Niri com refresh inicial, WorkspacesChanged e API pública para refresh solicitado pela UI; GDK/GTK hotplug/geometry permanece pendente.
 - [ ] Protótipo GTK layer-shell isolado.
 
 ## Fase 4 — Portabilidade

@@ -214,3 +214,21 @@ Foi adicionado `src/niri_outputs.rs`, portando o contrato de leitura de `service
 Validação: parser comparado com a saída real do Niri 26.04 e com o helper Python original na sessão atual (eDP-1, Apple Computer Inc Color LCD, 1440×900 lógico, escala 1.0, modo 1440×900@59.996). Testes cobrem normalização, wrappers, erros, preservação de ordem, helpers derivados, WorkspacesChanged, debounce/coalescing e cancelamento. Em 16/11/2026, 21 testes passaram; fmt, Clippy com warnings negados e diff check também passaram.
 
 **Limites:** os sinais de hotplug e geometry ainda não estão conectados a um adapter GDK/GTK, pois a escolha e implementação da UI/lifecycle continuam abertas. A API `request_refresh()` é a porta de entrada para essa integração futura. Nenhuma configuração do Niri, Kanshi ou do sistema foi alterada.
+
+
+## Quarta fatia de implementação — sessão Niri integrada (16/11/2026)
+
+Foi adicionado `src/niri_session.rs`, uma fachada de runtime que coordena as quatro peças já implementadas sem introduzir GTK, GLib, Tokio ou Relm4:
+
+- Inicializa o supervisor do event stream, o serviço de outputs e a fila serial de actions como uma única sessão.
+- Consome o JSONL no reducer `NiriState`; encaminha `NiriSignal`, atualiza snapshots e preserva diagnósticos de stderr, erros de protocolo, falhas de spawn e exits do processo.
+- Publica `NiriSessionSnapshot` com o estado projetado do compositor e o último inventário válido de outputs. `outputs: None` significa que a consulta inicial ainda não concluiu com sucesso.
+- Ao receber `WorkspacesChanged`, pede automaticamente refresh do inventário de outputs. A API pública `refresh_outputs()` permite que o futuro adapter GDK/GTK solicite refresh por hotplug/geometry sem conhecer o worker interno.
+- `dispatch()` envia actions ao worker FIFO e entrega `ActionFinished` com os dados reais do subprocesso. A fila não executa comandos via shell.
+- `stop()` e `Drop` encerram a sessão e fazem join do worker coordenador; o coordenador derruba os workers de processo/outputs e a fila de actions. Não existe singleton global nem integração automática com o lifecycle da UI.
+
+A API expõe um único canal de eventos (`recv`, `recv_timeout`, `try_recv`) com `SnapshotChanged`, sinais do compositor, diagnósticos, falhas e resultados de actions. A implementação permanece baseada em `std::thread`/`std::sync::mpsc`; isso é uma composição local e reversível, não uma decisão sobre o runtime definitivo do app.
+
+Teste de integração com executável Niri fake cobre handshake, projeção de workspace, consulta inicial de outputs, segundo refresh acionado por `WorkspacesChanged`, preservação de argv com espaços em actions e parada/join da sessão. Em 16/11/2026, a suíte completa contém 23 testes; `cargo test`, `cargo clippy --all-targets -- -D warnings`, `cargo fmt --check` e `git diff --check` passaram.
+
+**Limites explícitos:** ainda não há observador GDK/GTK para hotplug/geometry, seleção de QScreen, integração ao lifecycle global da aplicação, logging estruturado, contrato final com Codeína ou teste visual/funcional das superfícies. O adapter de sessão não altera configurações do Niri nem executa ações reais durante os testes.
