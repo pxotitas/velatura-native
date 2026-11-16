@@ -184,3 +184,17 @@ A implementação foi comparada com a fonte ativa `/home/px/.config/quickshell/s
 A suíte inicial usa fixtures sintéticas e testes unitários, sem alterar a sessão Niri. Em 16/11/2026, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` e `cargo test` passaram; o probe read-only `niri msg --json outputs` respondeu com o output atual. Um probe curto do event stream confirmou o handshake/snapshot inicial e eventos adicionais do Niri 26.04; nenhum título ou estado real de janela foi gravado em fixtures.
 
 **Limite atual:** isto ainda não é um adapter Niri funcional de ponta a ponta. Faltam supervisor do processo JSONL, tratamento de stderr/exit, reconnect de 3000ms apenas em exit não-zero, fila serial de actions, consulta/refresh de outputs e integração com o ciclo de vida da aplicação. Não foi escolhido Tokio, Relm4, GTK direto nem um contrato final de eventos. O contrato Backend ↔ Codeína continua draft.
+
+
+## Segunda fatia de implementação — Niri process e actions (16/11/2026)
+
+Foram adicionados dois módulos sem dependência de GTK ou runtime assíncrono:
+
+- `src/niri_process.rs`: inicia `niri msg --json event-stream`, lê stdout linha a linha e stderr em paralelo, publica saída/diagnósticos/exit, permite parada explícita e aplica a política observada na fonte: reconectar após 3000 ms apenas para exit não-zero. Exit zero encerra o supervisor sem restart; falha ao criar o processo é reportada como SpawnFailed e não recebe uma política de retry inventada.
+- `src/niri_actions.rs`: worker FIFO que executa um único `niri msg action` por vez. Cada argumento permanece um argv separado; não há shell, interpolação ou paralelismo. O resultado contém exit code, stdout/stderr e erro de spawn reais, sem receipt de aceite fictício.
+
+A implementação usa std::process, threads e canais da biblioteca padrão. Isso é uma escolha local e reversível para esta fatia, não uma decisão global de runtime para os demais serviços. Os executáveis podem ser injetados nos construtores para testes isolados.
+
+Testes usam executáveis fake temporários e não invocam ações reais do compositor. Em 16/11/2026, 13 testes passaram, incluindo forwarding stdout/stderr, exit limpo sem reconnect, reconnect após exit não-zero com atraso mínimo de 3000 ms medido, parada de child, FIFO de actions e propagação de exit não-zero. Clippy com warnings negados e diff check também foram executados.
+
+**Limites:** ainda falta consumir as mensagens do supervisor no reducer e no event bus, ligar o lifecycle ao app, implementar outputs/monitor refresh e testar reconexão não-zero com uma instância real do Niri. Os módulos não foram ligados automaticamente à sessão nem executaram ações reais.

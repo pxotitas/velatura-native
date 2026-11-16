@@ -1,6 +1,8 @@
 //! Core domain logic for the native Velatura backend.
 //!
-//! This crate deliberately starts with pure, testable reducers. Process
-//! management, UI integration, and lifecycle policy are layered on later.
+//! This crate keeps domain reducers independent from GTK and exposes system
+//! adapters as explicit modules.
 
 pub mod niri;
+pub mod niri_actions;
+pub mod niri_process;
