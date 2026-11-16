@@ -50,3 +50,7 @@ Motivo: proteger a sessão diária do usuário.
 - Estratégia de lock screen e autenticação.
 - Captura de tela e integração com portais.
 - Escopo de projetos aninhados islet e macos-qckshell.
+
+## Pontos a confirmar na fonte original
+
+- **Capture / window picking:** `CaptureOverlay.qml` chama `root.windowUnder(mouse.x, mouse.y)`, mas não há definição desse método no arquivo nem no checkout ativo. É um candidato a bug/símbolo ausente, não uma decisão de redesign. Reproduzir em runtime ou recuperar a implementação correta antes de especificar/portar o modo Window; não inventar um comportamento substituto.

@@ -1,0 +1,4 @@
+{"revision": 43, "occurred_at": "2026-11-15T20:00:01-04:00", "kind": {"type": "domain_changed", "domain": {"type": "audio_changed", "data": {"volume_percent": 40, "muted": false}}}}
+{"revision": 44, "occurred_at": "2026-11-15T20:00:02-04:00", "kind": {"type": "service_status_changed", "service": "bluetooth", "status": {"availability": "available", "lifecycle": "running", "capabilities": ["power", "discovery", "pair", "connect"], "since": "2026-11-15T20:00:02-04:00", "last_success": "2026-11-15T20:00:02-04:00", "last_error": null}}}
+{"revision": 45, "occurred_at": "2026-11-15T20:00:03-04:00", "kind": {"type": "command_progress", "id": 1001, "progress": {"stage": "running", "fraction": 0.5, "safe_message": "Capturing screen"}}}
+{"revision": 46, "occurred_at": "2026-11-15T20:00:04-04:00", "kind": {"type": "command_finished", "id": 1001, "result": {"outcome": "succeeded", "safe_message": "Screenshot saved"}}}

@@ -1,0 +1,13 @@
+[
+  {
+    "kind": "app",
+    "id": "example.desktop",
+    "name": "Example App",
+    "subtitle": "Example description",
+    "keywords": "example app utility",
+    "icon": "example-app",
+    "exec": "example-app %U",
+    "wmclass": "ExampleApp",
+    "categories": ["Utility"]
+  }
+]

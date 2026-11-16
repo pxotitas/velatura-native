@@ -141,3 +141,13 @@ Fonte: scripts/*.py ativos. Arquivos .new e __pycache__ foram excluídos.
 | procfs/sysfs/sensors | estatísticas | Preferir leitura direta com parsing testado. |
 | APIs HTTP | lyrics/markets/weather/GitHub/usage | Documentar endpoint, schema, cache, timeout, rate limit e privacidade. |
 
+
+## Auditoria integral concluída — segunda rodada (15/11/2026)
+
+Os 16 scripts marcados acima foram lidos integralmente, junto dos adapters QML e do setup/helper quando aplicável. Detalhes funcionais, endpoints, cache, timeout, permissões, lifecycle e riscos em INTEGRATION_AUDIT.md:
+- account.py, camera.py, claude_usage.py, codex_usage.py, emoji.py, fonts.py, github.py, machine.py;
+- markets.py, packages.py, privacy.py, screentime.py, servers.py, updates.py, version.py, weather.py.
+
+Helpers privilegiados e setup: /home/px/impasto-niri/system/usr/lib/velatura/{face,avatar}, policies polkit, PAM velatura-face e setup verbs system/face/camera foram lidos. Eles existem no checkout de origem, mas não estão instalados no ambiente atual; nenhum comando de instalação foi executado.
+
+A partir desta rodada, nenhum script Python ativo permanece sem leitura integral. A auditoria estática não substitui testes de runtime/efeitos reais; nenhum recurso foi marcado VERIFIED.

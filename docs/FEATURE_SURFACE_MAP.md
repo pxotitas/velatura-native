@@ -1,6 +1,6 @@
 # Mapa de superfícies, módulos e painéis
 
-Listas obtidas do filesystem ativo em 15/11/2026. A existência de um QML não prova que esteja acessível em runtime; conferir catálogo e roteamento do DynamicIsland.
+Listas obtidas do filesystem ativo em 15/11/2026. A existência de um QML não prova que esteja acessível em runtime; conferir catálogo e roteamento do DynamicIsland. A auditoria semântica das superfícies está em [UI_SURFACE_AUDIT.md](UI_SURFACE_AUDIT.md), e o inventário mecânico de 303 componentes está em [UI_COMPONENT_CATALOG.md](UI_COMPONENT_CATALOG.md). Screenshots/runtime seguem pendentes.
 
 ## Módulos da barra
 

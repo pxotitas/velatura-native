@@ -122,3 +122,20 @@ Fonte: Commands.qml ativo. Cada IpcHandler é chamado por qs ipc call <target> <
 - Estabilizar schema JSON e nunca expor segredos.
 - Testar CLI sem abrir a interface gráfica.
 
+
+
+## Auditoria do código (15/11/2026)
+
+A leitura integral de `Commands.qml` e do wrapper `~/.local/bin/velatura` está em [IPC_AUDIT.md](IPC_AUDIT.md). O catálogo acima enumera targets/verbs, mas o audit registra validação, payloads, respostas não JSON, comandos locais e divergências reais.
+
+Pontos que precisam permanecer explícitos no contrato nativo:
+
+- Nem todo handler retorna JSON: `wallpaper.set` devolve caminho/uso literal; `bar.toggle`, `widgets.toggle` e `shell.reload` retornam void.
+- `focus.set` controla DND, não foco do compositor.
+- `layout.set` não troca layout no Niri: aceita somente scrolling-column nativo.
+- `brightness.step` existe no IPC, mas está ausente na CLI.
+- A CLI lista layouts que o handler rejeita; `capture region/window` chama `capture.open` com menos argumentos do que a assinatura declara.
+- `velatura watch` é polling do status com intervalo configurável (mínimo 250 ms), não o event stream Niri.
+- `capture screen/text`, `version` e completion têm implementação local no wrapper, além dos handlers QML.
+
+O backend Rust deve preservar o contrato externo usado por scripts, e qualquer correção de divergência precisa de teste de compatibilidade e registro em DECISIONS.md.

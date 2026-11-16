@@ -52,11 +52,63 @@ Este mapa separa dependências de framework das integrações de domínio. A pre
 - Nunca armazenar senhas, tokens ou clipboard sem política clara.
 - Operações destrutivas exigem confirmação equivalente à original.
 
-## Pendências da auditoria
+## Validação restante após auditoria estática
 
-- Ler integralmente cada script e registrar endpoints, schemas, cache, caminhos XDG e flags.
-- Capturar saídas reais dos probes tools/status de capture, record e camera.
-- Verificar dependências realmente disponíveis no ambiente alvo.
-- Mapear comandos dinâmicos e execDetached não capturados por literais.
-- Definir quais integrações rodam no processo principal e quais são subprocessos opcionais.
+- Executar probes read-only de tools/status de capture, record e camera em ambiente controlado; nenhuma instalação ou mutação foi feita nesta rodada.
+- Testar cada integração disponível e cada estado ausente/permissão negada; helpers de face/avatar e howdy estão ausentes no sistema atual.
+- Validar endpoints, rate limits e formatos em fixtures offline; não depender da rede para testes determinísticos.
+- Implementar e testar APIs nativas em Rust; a auditoria não equivale a runtime parity.
+- Fechar política de processos opcionais e lifecycle com benchmark/observabilidade antes de declarar desempenho.
 
+
+## Auditoria das integrações adicionais (15/11/2026)
+
+A leitura integral dos 16 scripts da segunda rodada e dos adapters QML está em INTEGRATION_AUDIT.md. Somados aos 12 da primeira rodada, os 28 scripts ativos estão auditados. Dependências confirmadas:
+
+| Serviço | Fontes externas | Lifecycle / condição |
+|---|---|---|
+| Account | AccountsService D-Bus, busctl legado, ImageMagick, pkexec avatar helper | leitura no startup; nome debounce 800 ms; helper privilegiado opcional |
+| Face | v4l2-ctl GREY, howdy-next, pkexec helper, polkit, PAM | probe/refresh; enrol/remove interativos; requer IR |
+| Camera | V4L2, v4l2loopback, OpenCV, MediaPipe, NumPy, Pillow, 3 modelos | server só quando habilitado; webcam só com reader |
+| Claude | ~/.claude JSONL, OAuth credentials, Anthropic HTTPS | transcripts 120 s e limits 600 s somente com watchers; segredo nunca em argv |
+| Codex | ~/.codex session JSONL | leitura local sob demanda/poll com watchers; sem rede |
+| Emoji | unicode-emoji, CLDR annotations, iso-codes | lazy no modo emoji; recents XDG state |
+| Fonts | fontconfig fc-list | lazy em settings; timeout 10 s |
+| Machine | os-release, uname, passwd, pacman local DB, niri --version | consulta estática sob demanda |
+| GitHub | github.com contributions HTML | 30 min com watchers; username opcional; último dado preservado |
+| Markets | CoinGecko API, Frankfurter API | 5 min com watchers; debounce 800 ms; último dado preservado em falha parcial |
+| Weather | wttr.in HTTPS, IP geolocation quando place vazio | 15 min com watchers; last-good; timeout 12 s |
+| Packages | pacman, yay/paru, AUR RPC, kitty | leitura/search; install/remove/-Syu só em terminal interativo |
+| Updates | checkupdates, pacman -Qu, pacman -Qm, AUR RPC, vercmp | 30 min com watchers; AUR offline não invalida repo |
+| Version | git fetch, SSH BatchMode, checkout setup, kitty | check 30 min; update/restore files em terminal/ação detached |
+| Privacy | PipeWire nodes, /dev/video*, inotifywait, /proc | construído quando activity visible; eventos de open/close |
+| ScreenTime | Niri focus, LockService, IdleService, NotificationService, Steam manifests, XDG state | recorder de sessão; relatório/minuto só com subscribers |
+| Servers | ss, /proc, signals | ss a cada 3 s só com painel aberto; stop revalida processo |
+| Wallpaper setup | awww, mpvpaper, ffmpeg, Matugen | ownership explícito; nunca encerrar processos alheios |
+
+A presença de comando ou pacote não prova disponibilidade. Nesta máquina, probes read-only confirmaram v4l2-ctl, pkexec, fc-list, ss, pacman, checkupdates, vercmp, yay, git, curl, kitty, magick e wl-copy; ausentes: howdy, inotifywait e paru. Helpers/policies/PAM face/avatar não estão instalados, embora a fonte exista no checkout /home/px/impasto-niri.
+
+### Regras de portabilidade derivadas
+
+- HTTP nativo com timeout, user-agent e parse tipado; não usar curl com OAuth token em argv.
+- zbus para AccountsService, NetworkManager, BlueZ, UPower, PipeWire e serviços D-Bus em vez de parsing de CLI sempre que aplicável.
+- Leitura de /proc deve limitar UID e dados estritamente necessários; não guardar títulos ou conteúdo privado.
+- Para stop server, validar pid + starttime + executable + cwd e preferir pidfd; nunca matar grupo do próprio shell.
+- V4L2 e MediaPipe precisam de capability probe, stream lazy, backpressure, métricas e benchmark antes de ativar automaticamente.
+- Ações pacman/AUR permanecem visíveis e interativas; nenhum sudo/pkexec oculto.
+
+## Serviços QML complementares (15/11/2026)
+
+| Serviço | Dependência / persistência | Comportamento |
+|---|---|---|
+| CompositorService | niri --version | probe read-only no startup; não lê/escreve KDL |
+| ShortcutService | catálogo estático + SettingsService.keys; NiriMod opcional | bindings não editáveis no original; não inventar editor |
+| ProfileService | SettingsService, ThemeService, WallpaperService, Palettes; state/profiles.json; XDG_DATA_HOME/velatura/profiles | import/export JSON v1, profiles shipped, active settings stashed |
+| ControlsService | Settings/Theme + Network/Bluetooth/Audio/System/Notification/Sunset/Capture/Picker/Recorder/Clipboard | domínio de doors/toggles/blocks; persistência centre*; debounce 120 ms |
+| PickerService | hyprpicker, wl-copy, Theme settle, OsdService | probe uma vez, cancel, hex #RRGGBB, clipboard |
+| CalendarService | dcal IPC/Dank Calendar | inicia daemon hidden se ping falha; calendário externo é fonte de verdade |
+| CavaService | cava + scripts/cava.conf | 64 bands stdout; só com subscribers/linger; game mode para |
+| GamesService | games.json XDG state | 11 jogos; best scores/plays; debounce 120 ms |
+| PetService | pet.json XDG state + LockService/SettingsService/Theme | XP, cooldown, rest, mood, eggs; clock/timer condicionado a placement |
+
+Com os nove serviços acima, os 61 singletons QML ativos do catálogo foram lidos. Isso fecha a auditoria estática dos adapters; não fecha a auditoria de superfícies visuais nem testes reais de runtime.

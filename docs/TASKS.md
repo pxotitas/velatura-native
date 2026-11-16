@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** inventário estático inicial e contrato 1:1 documentados; auditoria funcional profunda ainda em andamento; implementação ainda não iniciada.
+**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); helpers/setup fonte lidos; UI visual e testes de runtime ainda pendentes. Nenhuma implementação Rust iniciada e nenhuma funcionalidade marcada como VERIFIED.
 
 ## Fase 0 — Preparação
 
@@ -19,33 +19,64 @@
 - [x] Extrair chaves e defaults do schema JsonAdapter.
 - [x] Catalogar módulos, painéis, settings e faces visuais.
 - [ ] Validar documentação visual com screenshots reais de cada superfície.
-- [ ] Completar auditoria linha a linha dos serviços e scripts.
-- [ ] Validar comandos externos e endpoints lendo cada script integralmente.
-- [ ] Mapear eventos, sinais, timers e lifecycle de cada serviço.
+- [x] Auditar estaticamente a composição raiz de shell, bar/reserve, Dynamic Island host, Settings navigation, Desktop, Dock, Deck, Lock e Capture; contratos em UI_SURFACE_AUDIT.md (15/11/2026).
+- [x] Auditoria linha a linha da primeira fatia: lifecycle, Niri, monitores, Settings, áudio, rede, Bluetooth, bateria, brilho, notifications, MPRIS, clipboard e tray (15/11/2026).
+- [x] Completar auditoria linha a linha dos serviços e scripts restantes (28/28 scripts Python ativos; helpers/setup privilegiados lidos).
+- [x] Validar por leitura integral os comandos externos, endpoints, schemas, cache, timeouts e permissões de cada script.
+- [x] Mapear eventos, sinais, timers e lifecycle dos 16 adapters QML adicionais; fichas em INTEGRATION_AUDIT.md.
 - [ ] Confirmar dependências e comportamento degradado no hardware real.
-- [ ] Fechar contratos Rust tipados por domínio com Codeína.
+- [ ] Revisar e congelar com Codeína o contrato tipado inicial de APP_API_CONTRACT.md; draft v0.1 criado, revisão pendente.
 
 ## Fase 1 — Auditoria e especificação
 
-- [ ] Mapear grafo de imports ativo do shell.qml.
+- [x] Aprofundar contratos/evidências estáticas de CompositorService, MonitorService, IdleService, SessionService, LockService e PolkitService; fixtures canônicas limitadas aos schemas confirmados em `docs/APP_API_MATRIX.md`.
+- [x] Classificar as pendências dos seis contratos e documentar planos de runtime isolado, completude documental e bloqueios remanescentes em `docs/APP_API_REVIEW.md` (rodada 3; testes não executados).
+- [x] Fechar a classificação documental simplificada do grupo anterior e especificar FontService, EmojiService, MachineService, VersionService, SunsetService e ApplicationsService em APP_API_CONTRACT/MATRIX/REVIEW (rodada 4); sem testes ou fixtures hipotéticas.
+- [ ] Resolver pendências reais dos contratos da rodada 4: persistência/dados Unicode Emoji; outcomes detached e efeitos de `git fetch` em Version; locale/ordenação e concorrência de Applications; erros não publicados dos adapters. Ver classificação por categoria em APP_API_REVIEW.
+- [ ] Validar em runtime os estados de erro/recuperação dos seis serviços, transições ext-idle/PrepareForSleep, acquire/release ext-session-lock, PAM/Howdy e ciclo de prompt/registro/fallback Polkit.
+- [ ] Resolver as lacunas de compatibilidade dos seis contratos antes de marcar seus schemas como fechados: resultados de subprocessos sem handlers, timeout/saída dos watchers, validade/correlação de flow Polkit, e mudanças live/hotplug de monitor.
+
+- [x] Mapear imports de primeiro nível, `qmldir`, singletons tocados no startup e consumidores UI; superfícies/componentes estáticos indexados em UI_SURFACE_AUDIT.md.
+- [x] Atualizar grafo de dependências entre serviços e anexar arestas das integrações externas; consumidores UI estáticos catalogados, runtime ainda pendente.
 - [ ] Identificar serviços usados no startup versus carregados sob demanda.
-- [ ] Auditar todos os serviços de sistema.
-- [ ] Auditar todos os painéis e módulos.
-- [ ] Auditar dock, desktop, deck, lock e capture.
-- [ ] Auditar comandos de Commands.qml e compatibilidade CLI.
-- [ ] Catalogar dependências externas e permissões.
-- [ ] Extrair schema completo de configurações e defaults.
+- [x] Auditar LauncherService, ApplicationsService e scripts/applications.py; documentar frecency, modos e dependências.
+- [x] Auditar ModuleService; documentar catálogo, capabilities, watchers e side effects de lazy loading.
+- [x] Auditar os 22 módulos da barra, IslandRest/IslandSummary, OSD/Notification layers e os 16 block faces do Control Centre; contratos em UI_SURFACE_AUDIT.md.
+- [x] Auditar DockService; documentar agrupamento, matching de janelas, pinning e geometria.
+- [x] Auditar DesktopService/DeckService; documentar grid, colisões, widgets, notes decks e spectrum.
+- [x] Auditar Widget.qml, Face registries, Inspector.qml, Picker.qml, Tray.qml e EdgeSpectrum/SpectrumBars; contratos em UI_SURFACE_AUDIT.md.
+- [x] Auditar DockItem.qml e DockMenu.qml; validação layer-shell/magnificação/autohide em runtime segue na fase de verificação.
+- [x] Auditar NotesService, TasksService e TimerService; documentar persistência, parser e estados.
+- [x] Auditar VmService/vms.py, StatsService/stats.py e SystemService/system.py.
+- [x] Auditar SessionService, IdleService, SunsetService, PolkitService e LockService.
+- [x] Auditar adapters FaceService/OsdService/LyricsService e scripts/lyrics.py.
+- [x] Auditar helpers face/avatar, policies polkit, PAM e setup system/face/camera no checkout; indisponibilidade runtime registrada (não instalado).
+- [x] Ler integralmente os 9 serviços QML restantes (Compositor, Shortcut, Profile, Picker, Controls, Calendar, Cava, Games e Pet); total 61/61 serviços QML ativos auditados.
+- [x] Atualizar PORTING_MATRIX, BACKEND_AUDIT, DEPENDENCY_MAP e SERVICE_GRAPH com as nove fichas finais.
+- [x] Expandir APP_API_CONTRACT para Profiles, Calendar, Controls, Picker, Games, Pet e eventos de Cava; Shortcut permanece catálogo read-only como no original.
+- [x] Ler integralmente ThemeService, WallpaperService, scripts/theme_manager.py e greeting.py; documentar providers, Matugen, awww/mpvpaper e temas externos.
+- [x] Auditar os painéis da Dynamic Island, detalhes, Settings (14 seções), Launcher, Games (11 jogos), Pet, Profiles, Lock e Capture; contratos em UI_SURFACE_AUDIT.md.
+- [x] Completar auditoria estática dos filhos de Dock, Desktop, Deck, Lock e Capture; o modo Capture Window segue BLOCKED por símbolo ausente; testes reais/screenshots ficam na fase 5.
+- [x] Gerar UI_COMPONENT_CATALOG.md com inventário de 303 componentes QML, handlers e referências a serviços.
+- [x] Ler integralmente Commands.qml e ~/.local/bin/velatura; registrar targets, payloads, erros e divergências em docs/IPC_AUDIT.md.
+- [ ] Testar compatibilidade CLI em fixtures.
+- [x] Auditar CaptureService/RecorderService e scripts/capture.py/record.py; executar somente probes read-only de ferramentas.
+- [ ] Resolver `root.windowUnder()` no modo Window com reprodução/recuperação da implementação original antes de portar esse modo; captura/gravação/OCR e coordenadas continuam sem teste runtime.
+- [x] Mapear os 28 scripts Python ativos, os 2 `.new` e `cava.conf`; 28/28 scripts lidos integralmente (ver SOURCE_INVENTORY.md).
+- [x] Ler integralmente os 16 scripts Python restantes e mapear dependências/permissões por serviço em INTEGRATION_AUDIT.md.
+- [x] Ler `SettingsService.qml`: schema, defaults, aliases, perfis, machine keys, FileView e migrações observadas.
+- [ ] Validar round-trip, arquivo corrompido e migração em fixtures Rust.
 - [ ] Definir escopo de islet e macos-qckshell.
 
 ## Fase 2 — Arquitetura e contratos
 
 - [ ] Escolher modelo de UI (Relm4 ou GTK4 direto).
 - [ ] Definir runtime assíncrono.
-- [ ] Definir AppSnapshot, AppEvent, AppCommand e erros.
-- [ ] Definir abstração de compositor.
-- [ ] Definir modelo de superfícies e multi-monitor.
+- [x] Definir contrato tipado inicial de snapshot/eventos/comandos/erros em APP_API_CONTRACT.md; adicionar extensão derivada das superfícies UI (v0.1-draft, revisão Codeína pendente).
+- [ ] Definir abstração de compositor após fechar contrato do event stream Niri e validar protocolo real.
+- [ ] Definir modelo de superfícies e multi-monitor após auditoria visual/funcional das superfícies e validação layer-shell no Niri.
 - [ ] Definir persistência e migração de configurações.
-- [ ] Criar mocks/fixtures compartilhados.
+- [x] Criar fixtures mock compartilhadas de snapshot e eventos para Codeína em docs/fixtures/; shapes são draft e requerem revisão.
 
 ## Fase 3 — Fundação
 

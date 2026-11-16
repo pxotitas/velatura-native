@@ -226,3 +226,44 @@ O comentário do entry point afirma que os demais singletons são criados no pri
 - SettingsWindow é janela normal, não layer surface.
 - Capture/Lock têm superfícies e lifecycle próprios; rastrear imports e triggers no shell.qml completo.
 
+
+## Arestas de integração externa auditadas (15/11/2026)
+
+- AccountService → account.py → AccountsService D-Bus/busctl; avatar helper + polkit opcional.
+- FaceService → howdy-next + helper face + polkit + PAM velatura-face + v4l2 GREY.
+- CameraService → camera.py → V4L2/v4l2loopback + OpenCV/MediaPipe/NumPy/Pillow + CaptureService para copiar foto.
+- ClaudeService → claude_usage.py → ~/.claude transcripts/cache + Anthropic OAuth usage endpoint; CodexService → codex_usage.py → ~/.codex session logs (local only).
+- EmojiService → emoji.py → Unicode emoji-test, CLDR annotations, iso-codes; FontService → fonts.py → fontconfig; MachineService → machine.py → os-release/proc/passwd/pacman.
+- GithubService → github.py → public GitHub contribution HTML; MarketsService → markets.py → CoinGecko/Frankfurter; WeatherService → weather.py → wttr.in.
+- PackagesService → packages.py → pacman + yay/paru + AUR RPC + kitty; UpdatesService → updates.py → checkupdates/pacman/AUR/vercmp; VersionService → version.py → git fetch + checkout setup.
+- PrivacyService → privacy.py → /dev/video*, inotifywait e /proc; ScreenTimeService → screentime.py → Niri focus + Lock/Idle/Notifications + XDG state + Steam manifests; ServersService → servers.py → ss + /proc + signals.
+- Theme/Wallpaper → theme_manager.py/greeting.py → awww/mpvpaper/ffmpeg/Matugen/ImageMagick e configs de apps; ownership de processos precisa ser estrito.
+
+As arestas acima descrevem dependências, não autorizam inicialização em startup. Consulte INTEGRATION_AUDIT.md para intervalos, payloads, falhas e condições de subscription.
+
+## Arestas QML complementares auditadas (15/11/2026)
+
+- CompositorService → niri --version (somente leitura); ShortcutService → catálogo de 31 shell actions + SettingsService.keys; NiriMod opcional, edição desativada no original.
+- ProfileService → SettingsService.snapshot/complete/adopt + ThemeService + WallpaperService + Palettes + state/profiles.json + XDG_DATA_HOME/velatura/profiles.
+- ControlsService → Session/Network/Bluetooth/System/Notification/Audio/Sunset/Settings/Capture/Picker/Recorder/Clipboard e SettingsService.centre*; UI de control center consome o modelo.
+- PickerService → hyprpicker + wl-copy + OsdService; aguarda morph/settle antes de congelar a tela.
+- CalendarService → dcal IPC; pode iniciar Dank Calendar em modo hidden; dados permanecem no serviço externo.
+- CavaService → cava -p scripts/cava.conf; subscriptions dos chips/painéis e gameMode controlam o processo.
+- GamesService → XDG state games.json; game panels são consumidores, scores são domínio persistente.
+- PetService → XDG state pet.json + LockService + SettingsService.onBar("pet"); UI da família e estilos consome apenas o pet ativo.
+
+Os 61 serviços ativos estão mapeados estaticamente; ainda faltam as fichas visuais dos consumers e a validação runtime.
+
+## Consumers visuais identificados por referência estática (não auditados)
+
+- ProfilesPart.qml consome ProfileService: cards, resumo de settings/palette, rename/duplicate/create/switch/remove e dialogs import/export.
+- KeysSection.qml e KeysPanel.qml consomem ShortcutService.catalogue/configPath; o binding sheet permanece vazio por design do backend atual.
+- CalendarModule.qml consome refreshMonth/eventsOn/hasEventsOn/newEvent/openCalendar/openEvent.
+- SpectrumBars.qml, components/Spectrum.qml, MediaModule.qml e IslandRest.qml assinam CavaService; desktop faces usam SpectrumBars.
+- ControlsPanel.qml, ControlsSection.qml, TopRowEditor.qml, TopRowInspector.qml, TogglesBlock.qml consomem ControlsService.
+- GamesModule.qml, GamesPanel.qml, GameBoard.qml, Game faces e desktop faces consomem GamesService.
+- PetModule.qml, PetPanel.qml, PetBlock.qml, Pet faces, ModulesSection.qml e desktop faces consomem PetService.
+- shell.qml e ControlsService chamam PickerService; OSD é emitido pelo serviço.
+- CompositorService não tem consumer visual próprio; NiriService consome a integração de compositor.
+
+Este mapa é resultado de rg de referências e não substitui auditoria visual. Cada caminho acima permanece NOT AUDITED na matriz quando é superfície UI.

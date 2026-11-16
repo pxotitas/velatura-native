@@ -1,0 +1,7 @@
+[
+  { "id": "lock", "icon": "󰌾", "label": "Lock", "destructive": false },
+  { "id": "suspend", "icon": "󰤄", "label": "Suspend", "destructive": false },
+  { "id": "logout", "icon": "󰗽", "label": "Log out", "destructive": true },
+  { "id": "reboot", "icon": "󰜉", "label": "Restart", "destructive": true },
+  { "id": "shutdown", "icon": "󰐥", "label": "Shut down", "destructive": true }
+]

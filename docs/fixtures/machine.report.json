@@ -1,0 +1,8 @@
+{
+  "os": "Example Linux",
+  "kernel": "6.0.0-example",
+  "host": "example-host",
+  "wm": "niri 0.1-example",
+  "shell": "bash",
+  "packages": 42
+}

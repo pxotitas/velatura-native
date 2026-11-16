@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "revision": 42,
+  "captured_at": "2026-11-15T20:00:00-04:00",
+  "settings": {
+    "schema_version": 1,
+    "revision": 7,
+    "values": {
+      "barHeight": 42,
+      "barStyle": "notched",
+      "barEverywhere": true,
+      "islandAttached": true,
+      "doNotDisturb": false,
+      "cameraEnabled": false,
+      "weatherPlace": "",
+      "markets": "BTC/USD,EUR/USD",
+      "githubUser": "example-user",
+      "clipboardWipeOnLock": true,
+      "language": "en"
+    }
+  },
+  "compositor": {
+    "kind": "niri",
+    "connected": true,
+    "version": "mock-niri-version",
+    "focused_output": "eDP-1",
+    "focused_window": {
+      "id": "window-101",
+      "app_id": "org.mozilla.firefox",
+      "title": "Example page",
+      "workspace_id": 2,
+      "output": "eDP-1",
+      "is_focused": true,
+      "is_floating": false
+    },
+    "workspaces": [
+      {
+        "id": 1,
+        "name": "1",
+        "output": "eDP-1",
+        "is_focused": false,
+        "is_active": true,
+        "is_occupied": true
+      },
+      {
+        "id": 2,
+        "name": "2",
+        "output": "eDP-1",
+        "is_focused": true,
+        "is_active": true,
+        "is_occupied": true
+      },
+      {
+        "id": 3,
+        "name": "3",
+        "output": "Virtual-1",
+        "is_focused": false,
+        "is_active": false,
+        "is_occupied": false
+      }
+    ],
+    "windows": [
+      {
+        "id": "window-101",
+        "app_id": "org.mozilla.firefox",
+        "title": "Example page",
+        "workspace_id": 2,
+        "output": "eDP-1",
+        "is_focused": true,
+        "is_floating": false
+      }
+    ]
+  },
+  "outputs": [
+    {
+      "id": "eDP-1",
+      "name": "eDP-1",
+      "description": "Built-in display (mock)",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 1.0,
+      "active": true,
+      "internal": true,
+      "virtual_output": false,
+      "focused": true,
+      "effective_primary": true,
+      "hosts_live_island": true
+    },
+    {
+      "id": "Virtual-1",
+      "name": "Virtual-1",
+      "description": "Virtual streaming output (mock)",
+      "geometry": {
+        "x": 1440,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1.0,
+      "active": true,
+      "internal": false,
+      "virtual_output": true,
+      "focused": false,
+      "effective_primary": false,
+      "hosts_live_island": false
+    }
+  ],
+  "shell": {
+    "live_island_output": "eDP-1",
+    "do_not_disturb": false,
+    "game_mode": false,
+    "active_panel": null
+  },
+  "services": {
+    "niri": {
+      "availability": "available",
+      "lifecycle": "running",
+      "capabilities": [
+        "workspace_events",
+        "window_events",
+        "focus_window",
+        "focus_workspace",
+        "close_window"
+      ],
+      "since": "2026-11-15T19:55:00-04:00",
+      "last_success": "2026-11-15T20:00:00-04:00",
+      "last_error": null
+    },
+    "audio": {
+      "availability": "available",
+      "lifecycle": "running",
+      "capabilities": [
+        "volume",
+        "mute",
+        "sink_selection",
+        "source_selection"
+      ],
+      "since": "2026-11-15T19:55:00-04:00",
+      "last_success": "2026-11-15T20:00:00-04:00",
+      "last_error": null
+    },
+    "network": {
+      "availability": "available",
+      "lifecycle": "running",
+      "capabilities": [
+        "wifi_scan",
+        "wifi_connect",
+        "wifi_disconnect"
+      ],
+      "since": "2026-11-15T19:55:00-04:00",
+      "last_success": "2026-11-15T19:59:58-04:00",
+      "last_error": null
+    },
+    "bluetooth": {
+      "availability": "unavailable",
+      "lifecycle": "stopped",
+      "capabilities": [],
+      "since": null,
+      "last_success": null,
+      "last_error": {
+        "code": "daemon_unavailable",
+        "safe_message": "Bluetooth service is unavailable",
+        "retryable": true
+      }
+    },
+    "battery": {
+      "availability": "unavailable",
+      "lifecycle": "stopped",
+      "capabilities": [],
+      "since": null,
+      "last_success": null,
+      "last_error": null
+    },
+    "camera": {
+      "availability": "disabled",
+      "lifecycle": "stopped",
+      "capabilities": [],
+      "since": null,
+      "last_success": null,
+      "last_error": null
+    },
+    "face": {
+      "availability": "unavailable",
+      "lifecycle": "stopped",
+      "capabilities": [],
+      "since": null,
+      "last_success": null,
+      "last_error": {
+        "code": "missing_dependency",
+        "safe_message": "Face unlock is not configured",
+        "retryable": false
+      }
+    },
+    "weather": {
+      "availability": "available",
+      "lifecycle": "running",
+      "capabilities": [
+        "current_conditions",
+        "hourly_forecast"
+      ],
+      "since": "2026-11-15T19:50:00-04:00",
+      "last_success": "2026-11-15T19:58:00-04:00",
+      "last_error": null
+    }
+  },
+  "state": {
+    "audio": {
+      "volume_percent": 35,
+      "muted": false,
+      "default_sink": {
+        "id": "sink-1",
+        "name": "Mock Speakers"
+      },
+      "default_source": {
+        "id": "source-1",
+        "name": "Mock Microphone"
+      }
+    },
+    "network": {
+      "radio_enabled": true,
+      "state": "connected",
+      "ssid": "Example Wi-Fi",
+      "strength_percent": 82,
+      "security": "wpa2"
+    },
+    "media": {
+      "available": true,
+      "player": "org.mpris.MediaPlayer2.example",
+      "title": "Example track",
+      "artist": "Example artist",
+      "playing": true,
+      "position_seconds": 92.0,
+      "length_seconds": 210.0,
+      "can_seek": true,
+      "can_next": true,
+      "can_previous": true
+    },
+    "notifications": {
+      "do_not_disturb": false,
+      "unread_count": 1,
+      "recent": [
+        {
+          "id": 501,
+          "app_name": "Example app",
+          "summary": "Example notification",
+          "body": "",
+          "urgency": "normal",
+          "timestamp": "2026-11-15T19:59:00-04:00"
+        }
+      ]
+    },
+    "privacy": {
+      "microphone_active": false,
+      "camera_active": false,
+      "screen_sharing": false,
+      "holders": []
+    },
+    "timer": {
+      "state": "running",
+      "label": "25 min",
+      "remaining_ms": 780000
+    },
+    "notes": {
+      "live_count": 2,
+      "archived_count": 1
+    },
+    "tasks": {
+      "todo": 3,
+      "doing": 1,
+      "done": 4,
+      "overdue": 0
+    }
+  }
+}

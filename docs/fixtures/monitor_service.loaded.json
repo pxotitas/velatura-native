@@ -1,0 +1,31 @@
+{
+  "outputs": [
+    {
+      "name": "eDP-1",
+      "description": "Example Panel 0001",
+      "make": "Example",
+      "model": "Panel",
+      "serial": "0001",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "refresh_rate": 60.0,
+      "mode": "1920x1080@60.000",
+      "scale": 1.0,
+      "transform": "Normal",
+      "disabled": false,
+      "vrr": false,
+      "vrr_supported": false,
+      "resolutions": [
+        { "width": 1920, "height": 1080, "refreshes": [60.0] },
+        { "width": 1280, "height": 720, "refreshes": [60.0] }
+      ]
+    }
+  ],
+  "loaded": true,
+  "refresh_pending": false,
+  "last_error": "",
+  "primary_name": "eDP-1",
+  "internal_name": "eDP-1"
+}
