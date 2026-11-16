@@ -23,21 +23,17 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Some("version" | "--version" | "-V") => {
-            println!("Velatura Native {VERSION}");
+            println!("Velatura {VERSION}");
             ExitCode::SUCCESS
         }
         Some("stop") => stop_application(),
         Some("restart") => restart_application(),
-        Some("ipc") => {
-            eprintln!(
-                "{{\"error\":\"IPC nativo ainda não foi implementado; nenhum comando foi enviado ao shell legado.\"}}"
-            );
-            ExitCode::from(2)
+        Some("ipc") => unavailable_command("ipc", args.collect::<Vec<_>>().join(" ")),
+        Some(command) if is_product_command(command) => {
+            unavailable_command(command, args.collect::<Vec<_>>().join(" "))
         }
         Some(command) => {
-            eprintln!(
-                "{{\"error\":\"comando desconhecido: {command}; use 'velatura-native help'\"}}"
-            );
+            eprintln!("{{\"error\":\"comando desconhecido: {command}; use 'velatura help'\"}}");
             ExitCode::from(2)
         }
     }
@@ -45,20 +41,74 @@ fn main() -> ExitCode {
 
 fn print_help() {
     println!(
-        "Velatura Native {VERSION}\n\
-         uso: velatura-native <comando>\n\n\
-         comandos disponíveis:\n\
-           run       inicia a aplicação GTK4 (padrão)\n\
-           stop      solicita o encerramento da instância ativa\n\
-           restart   encerra e inicia novamente a aplicação\n\
-           version   mostra a versão\n\
-           help      mostra esta ajuda\n\n\
-         ainda não implementados:\n\
-           ipc       será conectado à API tipada do backend; não encaminha\n\
-                     chamadas ao Quickshell legado.\n\n\
-         executável de desenvolvimento: velatura-native\n\
-         o comando legado 'velatura' permanece intacto durante a migração."
+        "Velatura {VERSION}\n\
+         uso: velatura <comando> [argumentos]\n\n\
+         aplicação:\n\
+           run | (sem argumento)  iniciar a aplicação GTK4\n\
+           stop                   encerrar a instância ativa\n\
+           restart                reiniciar a aplicação\n\
+           version                mostrar versão\n\
+           help                   mostrar esta ajuda\n\n\
+         comandos de domínio (contrato legado preservado):\n\
+           status                 snapshot geral\n\
+           timer start|pause|resume|cancel\n\
+           note add|list|get|append|archive|remove\n\
+           task add|list|move|done|due|remove\n\
+           open <panel> | close | panels\n\
+           vm list|start|open|pause|resume|stop|kill\n\
+           media [play|pause|toggle|next|prev]\n\
+           capture screen|text|region|window\n\
+           watch [--interval segundos]\n\
+           game | layout | focus | nightlight\n\
+           bar | widgets\n\
+           volume [set|mute] | brightness [set|step]\n\
+           theme list|set | wallpaper set|list|random\n\
+           say <texto> | lock | reload\n\
+           ipc call <target> <verb> [argumentos...]\n\
+           complete [palavras...]\n\n\
+         O catálogo está disponível, mas os comandos de domínio/IPC ainda\n\
+         precisam ser conectados aos serviços nativos. Nenhum deles chama\n\
+         nem encaminha comandos ao Quickshell legado."
     );
+}
+
+fn is_product_command(command: &str) -> bool {
+    matches!(
+        command,
+        "status"
+            | "timer"
+            | "note"
+            | "task"
+            | "open"
+            | "close"
+            | "panels"
+            | "vm"
+            | "media"
+            | "capture"
+            | "watch"
+            | "game"
+            | "layout"
+            | "focus"
+            | "nightlight"
+            | "bar"
+            | "widgets"
+            | "volume"
+            | "brightness"
+            | "theme"
+            | "wallpaper"
+            | "say"
+            | "lock"
+            | "reload"
+            | "complete"
+    )
+}
+
+fn unavailable_command(command: &str, arguments: String) -> ExitCode {
+    eprintln!(
+        "{{\"error\":\"comando '{command}' catalogado, mas ainda não conectado ao backend nativo; argumentos: {}\"}}",
+        json_escape(&arguments)
+    );
+    ExitCode::from(2)
 }
 
 fn run_application() -> ExitCode {

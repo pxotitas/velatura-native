@@ -83,16 +83,19 @@ O bootstrap mínimo é construído com:
 ./scripts/install-dev-cli.sh
 ```
 
-O instalador cria `~/.local/bin/velatura-native`, sem substituir o comando legado `~/.local/bin/velatura`. Antes do primeiro build, esse comando usa Cargo como launcher e compila com um job; depois do build, o instalador pode apontar diretamente para o binário. Neste ambiente `~/.local/bin` já está no `PATH`. Comandos disponíveis no bootstrap:
+O instalador cria `~/.local/bin/velatura`, o nome definitivo do executável nativo. Se encontrar o antigo CLI Python regular nesse caminho, move-o para `~/.local/share/velatura/legacy-cli/velatura` (fora do PATH) antes de instalar o link. Não apaga o original: preserva rollback/referência. O link permanece estável para `scripts/velatura-native`: ele executa `target/debug/velatura` quando compilado e usa Cargo como fallback após um checkout/clean. Neste ambiente `~/.local/bin` já está no `PATH`. Comandos disponíveis no bootstrap:
 
 ```bash
-velatura-native run
-velatura-native help
-velatura-native version
-velatura-native stop
-velatura-native restart
+velatura run
+velatura help
+velatura version
+velatura stop
+velatura restart
+velatura ipc call <target> <verb> [argumentos...]
 ```
 
-`ipc` ainda não está implementado e retorna erro explícito; ele não encaminha comandos ao Quickshell antigo. O CLI legado continua preservado até uma migração deliberada.
+O help também cataloga os grupos originais: `status`, `timer`, `note`, `task`, `open`, `close`, `panels`, `vm`, `media`, `capture`, `watch`, `game`, `layout`, `focus`, `nightlight`, `bar`, `widgets`, `volume`, `brightness`, `theme`, `wallpaper`, `say`, `lock`, `reload` e `complete`. Neste estágio, os comandos de domínio e IPC ainda retornam erro explícito de não implementado; nenhum encaminha chamadas ao Quickshell legado. A implementação nativa deve preservar o contrato em `docs/IPC_API.md` e `docs/IPC_AUDIT.md`.
+
+O executável é chamado somente `velatura`. `velatura-native` não é o nome público e não deve ser usado em novos scripts/documentos.
 
 A janela atual é uma superfície de teste GTK4: confirma inicialização, backend Niri, enumeração GDK de monitores e solicitação manual de refresh. Não representa a UI final nem usa layer-shell.

@@ -183,7 +183,7 @@ O bootstrap executável já existe e é a autoridade do lifecycle da aplicação
 - `src/main.rs` é dono do `GtkApplication`, do CLI e dos callbacks `activate` / `shutdown`.
 - `ApplicationRuntime` é criado uma única vez no `activate`, mantido durante a vida da aplicação e encerrado no `shutdown`.
 - `src/ui/bootstrap.rs` contém apenas a superfície temporária de teste.
-- `velatura-native` é o comando de desenvolvimento instalado em `~/.local/bin`; use `velatura-native run`, `velatura-native help`, `velatura-native stop` e `velatura-native restart`.
+- `velatura` é o único nome do executável nativo e está instalado em `~/.local/bin`; use `velatura run`, `velatura help`, `velatura stop`, `velatura restart` e `velatura ipc ...`.
 
 Sua tarefa é substituir a superfície temporária pela UI real e conectar seus componentes ao bootstrap sem duplicar ou mover o lifecycle. Preserve a assinatura pública `build_bootstrap_window(app, monitor_count, refresh)` até combinar uma alteração de contrato com o backend; `refresh` é um `NiriRefreshHandle` cloneável e permite solicitar atualização de outputs sem expor os canais internos.
 
@@ -191,8 +191,23 @@ Sua tarefa é substituir a superfície temporária pela UI real e conectar seus 
 - não crie outro `GtkApplication`, `main.rs`, binário ou processo de backend;
 - não crie um segundo `ApplicationRuntime` ou sessão Niri;
 - não implemente comandos CLI, `stop/restart`, IPC ou supervisão de processo na UI;
-- não altere o caminho/alias `velatura-native` nem sobrescreva `~/.local/bin/velatura` (o CLI legado permanece intacto durante a migração);
+- não altere o nome/caminho público do executável `velatura` nem os scripts de instalação sem alinhar com o backend;
 - não mova callbacks de lifecycle para widgets nem bloqueie a thread GTK;
 - não marque a UI como 1:1 até comparar com o QML original e validar estados/interações reais.
+
+### Integração funcional e comandos públicos
+
+O CLI nativo já ocupa `~/.local/bin/velatura`. O CLI Python anterior foi preservado fora do PATH em `~/.local/share/velatura/legacy-cli/velatura` apenas para referência/rollback. Não o execute nem o use como backend da versão nativa.
+
+O catálogo público a preservar está em `docs/IPC_API.md` e `docs/IPC_AUDIT.md`. Inclui `status`, `timer`, `note`, `task`, `open/close/panels`, `vm`, `media`, `capture`, `watch`, `game`, `layout`, `focus`, `nightlight`, `bar`, `widgets`, `volume`, `brightness` (incluindo `step`), `theme`, `wallpaper`, `say`, `lock`, `reload`, `ipc` e `complete`.
+
+O CLI já anuncia esses grupos, mas os comandos de domínio ainda retornam erro explícito de não implementado. Isso é intencional: nunca encaminhar silenciosamente para Quickshell. Sua responsabilidade é:
+- estilizar e evoluir a UI temporária para a interface 1:1;
+- integrar widgets aos snapshots, eventos e comandos tipados reais do backend;
+- ligar ações visuais (incluindo launcher, volume, brilho, mídia, painéis, captura e settings) às APIs nativas disponíveis;
+- quando faltar uma API, registrar exatamente o contrato necessário e solicitar ao backend; não chamar `velatura` como subprocesso, `qs ipc`, scripts Python ou comandos shell a partir dos widgets;
+- revisar com o backend a experiência de CLI/IPC e seus estados, mas não implementar serviços de sistema dentro da UI.
+
+`velatura ipc call <target> <verb> ...` ainda não está conectado. Não declarar nenhum comando como funcional até existir implementação nativa, teste de compatibilidade e evidência documentada. Preserve a semântica externa e os formatos descritos na auditoria.
 
 Antes de alterar, confira `git status` e preserve mudanças do backend. Se precisar de novos métodos ou eventos, solicite ao backend e documente o contrato em `docs/APP_API_CONTRACT.md` e `docs/ARCHITECTURE.md`.
