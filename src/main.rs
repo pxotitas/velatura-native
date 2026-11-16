@@ -10,6 +10,8 @@ use std::rc::Rc;
 use std::thread;
 use std::time::Duration;
 use velatura_core::application_runtime::ApplicationRuntime;
+use velatura_core::niri_session::NiriSessionEvent;
+use velatura_core::ui::gtk_event_bridge::GtkEventBridge;
 
 const APPLICATION_ID: &str = "io.github.pxdritz.velatura";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -128,6 +130,8 @@ fn run_application() -> ExitCode {
 
     let runtime: Rc<RefCell<Option<ApplicationRuntime>>> = Rc::default();
     let runtime_for_activate = Rc::clone(&runtime);
+    let event_bridge: Rc<RefCell<Option<GtkEventBridge>>> = Rc::default();
+    let bridge_for_activate = Rc::clone(&event_bridge);
 
     application.connect_activate(move |app| {
         if let Some(window) = app.windows().first() {
@@ -153,21 +157,49 @@ fn run_application() -> ExitCode {
                 let backend = runtime_ref
                     .as_ref()
                     .expect("runtime must exist after successful startup");
-                velatura_core::ui::bootstrap::build_bootstrap_window(
+                velatura_core::ui::bootstrap::build_bootstrap_window_with_snapshot(
                     app,
                     backend.monitor_count(),
                     backend.session().refresh_handle(),
+                    &backend.snapshot(),
                 )
             }
             Err(error) => velatura_core::ui::bootstrap::build_error_window(app, &error),
         };
         window.present();
+
+        if bridge_for_activate.borrow().is_none() {
+            let receiver = runtime_for_activate
+                .borrow_mut()
+                .as_mut()
+                .and_then(ApplicationRuntime::take_events);
+            if let Some(receiver) = receiver {
+                let weak_window = window.downgrade();
+                *bridge_for_activate.borrow_mut() = Some(GtkEventBridge::attach(
+                    receiver,
+                    gtk4::glib::MainContext::default(),
+                    move |event| {
+                        if let NiriSessionEvent::SnapshotChanged(snapshot) = event
+                            && let Some(window) = weak_window.upgrade()
+                        {
+                            window.set_title(Some(
+                                &velatura_core::ui::bootstrap::backend_window_title(&snapshot),
+                            ));
+                        }
+                    },
+                ));
+            }
+        }
     });
 
     let runtime_for_shutdown = Rc::clone(&runtime);
+    let bridge_for_shutdown = Rc::clone(&event_bridge);
     application.connect_shutdown(move |_| {
         if let Some(mut backend) = runtime_for_shutdown.borrow_mut().take() {
             backend.shutdown();
+        }
+        if let Some(mut bridge) = bridge_for_shutdown.borrow_mut().take() {
+            bridge.join();
         }
     });
 

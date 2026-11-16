@@ -1,6 +1,7 @@
 //! Minimal surface used to verify GTK activation and backend ownership.
 
 use crate::niri_session::NiriRefreshHandle;
+use crate::niri_session::NiriSessionSnapshot;
 use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, Box as GtkBox, Button, Label, Orientation};
 
@@ -11,9 +12,24 @@ pub fn build_bootstrap_window(
     monitor_count: u32,
     refresh: NiriRefreshHandle,
 ) -> ApplicationWindow {
+    build_bootstrap_window_with_snapshot(
+        app,
+        monitor_count,
+        refresh,
+        &NiriSessionSnapshot::default(),
+    )
+}
+
+/// Build the diagnostic surface with the real, atomically published backend snapshot.
+pub fn build_bootstrap_window_with_snapshot(
+    app: &Application,
+    monitor_count: u32,
+    refresh: NiriRefreshHandle,
+    snapshot: &NiriSessionSnapshot,
+) -> ApplicationWindow {
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("Velatura Native — bootstrap")
+        .title(backend_window_title(snapshot))
         .default_width(520)
         .default_height(300)
         .build();
@@ -59,6 +75,27 @@ pub fn build_bootstrap_window(
     root.append(&action_status);
     window.set_child(Some(&root));
     window
+}
+
+pub fn backend_window_title(snapshot: &NiriSessionSnapshot) -> String {
+    let connection = if snapshot.niri.connected {
+        "conectado"
+    } else {
+        "aguardando Niri"
+    };
+    let outputs = snapshot.outputs.as_ref().map_or_else(
+        || "outputs pendentes".to_string(),
+        |outputs| {
+            format!(
+                "{} outputs",
+                outputs.iter().filter(|output| !output.disabled).count()
+            )
+        },
+    );
+    format!(
+        "Velatura Native — {connection} · {outputs} · r{}",
+        snapshot.revision
+    )
 }
 
 /// Show an explicit startup error instead of silently running without backend.

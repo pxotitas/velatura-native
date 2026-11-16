@@ -8,6 +8,7 @@ use crate::niri_actions::{NiriActionQueue, NiriActionResult};
 use crate::niri_outputs::{NiriOutput, NiriOutputEvent, NiriOutputService};
 use crate::niri_process::{NiriEventStream, NiriProcessEvent};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -15,6 +16,8 @@ const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct NiriSessionSnapshot {
+    /// Monotonic revision assigned when this coherent snapshot is committed.
+    pub revision: u64,
     pub niri: NiriState,
     /// None means the initial output query has not completed successfully.
     pub outputs: Option<Vec<NiriOutput>>,
@@ -41,7 +44,8 @@ enum SessionCommand {
 /// A single owned Niri runtime. Drop requests shutdown and joins its worker.
 pub struct NiriSession {
     commands: Option<Sender<SessionCommand>>,
-    events: Receiver<NiriSessionEvent>,
+    events: Option<Receiver<NiriSessionEvent>>,
+    snapshot: Arc<RwLock<NiriSessionSnapshot>>,
     worker: Option<JoinHandle<()>>,
 }
 
@@ -56,13 +60,16 @@ impl NiriSession {
         let program = program.into();
         let (command_tx, command_rx) = mpsc::channel();
         let (event_tx, event_rx) = mpsc::channel();
+        let snapshot = Arc::new(RwLock::new(NiriSessionSnapshot::default()));
+        let snapshot_for_worker = Arc::clone(&snapshot);
         let worker = thread::Builder::new()
             .name("velatura-niri-session".into())
-            .spawn(move || run_session(program, command_rx, event_tx))
+            .spawn(move || run_session(program, command_rx, event_tx, snapshot_for_worker))
             .expect("failed to start Niri session worker");
         Self {
             commands: Some(command_tx),
-            events: event_rx,
+            events: Some(event_rx),
+            snapshot,
             worker: Some(worker),
         }
     }
@@ -98,15 +105,38 @@ impl NiriSession {
 
     /// Receive the next state, diagnostic, process or action event.
     pub fn recv(&self) -> Result<NiriSessionEvent, mpsc::RecvError> {
-        self.events.recv()
+        match &self.events {
+            Some(events) => events.recv(),
+            None => Err(mpsc::RecvError),
+        }
     }
 
     pub fn recv_timeout(&self, timeout: Duration) -> Result<NiriSessionEvent, RecvTimeoutError> {
-        self.events.recv_timeout(timeout)
+        match &self.events {
+            Some(events) => events.recv_timeout(timeout),
+            None => Err(RecvTimeoutError::Disconnected),
+        }
     }
 
     pub fn try_recv(&self) -> Result<NiriSessionEvent, mpsc::TryRecvError> {
-        self.events.try_recv()
+        match &self.events {
+            Some(events) => events.try_recv(),
+            None => Err(mpsc::TryRecvError::Disconnected),
+        }
+    }
+
+    /// Return the latest committed Niri and output state in one consistent value.
+    pub fn snapshot(&self) -> NiriSessionSnapshot {
+        self.snapshot
+            .read()
+            .expect("Niri snapshot lock poisoned")
+            .clone()
+    }
+
+    /// Transfer the single event receiver to an adapter. `recv*` is unavailable
+    /// afterwards; the session remains the owner of the workers and commands.
+    pub fn take_events(&mut self) -> Option<Receiver<NiriSessionEvent>> {
+        self.events.take()
     }
 
     fn send(&self, command: SessionCommand) -> Result<(), mpsc::SendError<()>> {
@@ -137,6 +167,7 @@ fn run_session(
     program: String,
     commands: Receiver<SessionCommand>,
     events: Sender<NiriSessionEvent>,
+    published_snapshot: Arc<RwLock<NiriSessionSnapshot>>,
 ) {
     let (stream, process_events) = NiriEventStream::with_program(program.clone());
     let (outputs_service, output_events) = NiriOutputService::with_program(program.clone());
@@ -181,26 +212,35 @@ fn run_session(
                         if topology_changed {
                             let _ = outputs_service.request_refresh();
                         }
-                        publish_snapshot(&events, &snapshot, &mut running);
+                        publish_snapshot(&events, &published_snapshot, &mut snapshot, &mut running);
                     }
                     Ok(
                         NiriLineResult::HandshakeAccepted | NiriLineResult::HandshakeRejected(_),
                     ) => {
-                        publish_snapshot(&events, &snapshot, &mut running);
+                        publish_snapshot(&events, &published_snapshot, &mut snapshot, &mut running);
                     }
                     Ok(NiriLineResult::Ignored) => {}
                     Err(error) => {
                         let _ = events.send(NiriSessionEvent::ProtocolError(error.to_string()));
-                        publish_snapshot(&events, &snapshot, &mut running);
+                        publish_snapshot(&events, &published_snapshot, &mut snapshot, &mut running);
                     }
                 },
                 NiriProcessEvent::Stderr(message) => {
                     let _ = events.send(NiriSessionEvent::Diagnostic(message));
                 }
                 NiriProcessEvent::Exited { code, success } => {
+                    snapshot.niri.connected = false;
+                    if !success {
+                        if let Some(code) = code {
+                            snapshot.niri.last_error = format!("Niri event stream exited ({code})");
+                        }
+                    }
+                    publish_snapshot(&events, &published_snapshot, &mut snapshot, &mut running);
                     let _ = events.send(NiriSessionEvent::ProcessExited { code, success });
                 }
                 NiriProcessEvent::SpawnFailed(error) => {
+                    snapshot.niri.connected = false;
+                    publish_snapshot(&events, &published_snapshot, &mut snapshot, &mut running);
                     let _ = events.send(NiriSessionEvent::ProcessSpawnFailed(error));
                 }
             }
@@ -210,7 +250,7 @@ fn run_session(
             match output_event {
                 NiriOutputEvent::Refreshed(outputs) => {
                     snapshot.outputs = Some(outputs);
-                    publish_snapshot(&events, &snapshot, &mut running);
+                    publish_snapshot(&events, &published_snapshot, &mut snapshot, &mut running);
                 }
                 NiriOutputEvent::Failed(error) => {
                     let _ = events.send(NiriSessionEvent::OutputsRefreshFailed(error));
@@ -238,9 +278,14 @@ fn run_session(
 
 fn publish_snapshot(
     events: &Sender<NiriSessionEvent>,
-    snapshot: &NiriSessionSnapshot,
+    published_snapshot: &RwLock<NiriSessionSnapshot>,
+    snapshot: &mut NiriSessionSnapshot,
     running: &mut bool,
 ) {
+    snapshot.revision = snapshot.revision.saturating_add(1);
+    *published_snapshot
+        .write()
+        .expect("Niri snapshot lock poisoned") = snapshot.clone();
     if events
         .send(NiriSessionEvent::SnapshotChanged(snapshot.clone()))
         .is_err()
@@ -318,10 +363,13 @@ exit 2
         let mut connected = false;
         let mut workspace = false;
         let mut output_snapshots = 0;
+        let mut previous_revision = 0;
         let deadline = Instant::now() + Duration::from_secs(3);
         while Instant::now() < deadline && !(connected && workspace && output_snapshots >= 2) {
             match session.recv_timeout(Duration::from_millis(250)) {
                 Ok(NiriSessionEvent::SnapshotChanged(snapshot)) => {
+                    assert!(snapshot.revision > previous_revision);
+                    previous_revision = snapshot.revision;
                     connected |= snapshot.niri.connected;
                     workspace |= snapshot.niri.workspaces.len() == 1;
                     if snapshot
@@ -341,6 +389,11 @@ exit 2
             }
         }
         assert!(connected && workspace && output_snapshots >= 2);
+        let current = session.snapshot();
+        assert_eq!(current.revision, previous_revision);
+        assert!(current.niri.connected);
+        assert_eq!(current.niri.workspaces.len(), 1);
+        assert_eq!(current.outputs.as_ref().map(Vec::len), Some(1));
         session
             .dispatch(["test-action", "arg with spaces"])
             .unwrap();
@@ -365,5 +418,33 @@ exit 2
         let started = Instant::now();
         session.stop();
         assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    #[test]
+    fn initial_snapshot_is_empty_and_spawn_disconnection_is_explicit() {
+        let session = NiriSession::with_program("/velatura-test/missing-niri-binary");
+        let initial = session.snapshot();
+        assert_eq!(initial.revision, 0);
+        assert!(!initial.niri.connected);
+        assert!(initial.niri.workspaces.is_empty());
+        assert!(initial.outputs.is_none());
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        let mut reported = false;
+        while Instant::now() < deadline {
+            match session.recv_timeout(Duration::from_millis(100)) {
+                Ok(NiriSessionEvent::ProcessSpawnFailed(_)) => {
+                    reported = true;
+                    break;
+                }
+                Ok(_) => {}
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(error) => panic!("session channel closed unexpectedly: {error}"),
+            }
+        }
+        assert!(reported);
+        let disconnected = session.snapshot();
+        assert!(!disconnected.niri.connected);
+        assert!(disconnected.outputs.is_none());
     }
 }

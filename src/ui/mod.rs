@@ -4,3 +4,4 @@
 //! entry point and backend lifecycle remain owned by src/main.rs.
 
 pub mod bootstrap;
+pub mod gtk_event_bridge;

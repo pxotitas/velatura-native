@@ -16,7 +16,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Island state arbitration | bar/island/IslandState.qml | AUDITED | prioridade panel/notification/OSD/summary/modules, timeout, handover e dismiss |
 
 
-| Niri IPC state/events/actions + outputs | services/NiriService.qml, services/MonitorService.qml, scripts/monitors.py; src/niri.rs, src/niri_process.rs, src/niri_actions.rs, src/niri_outputs.rs, src/niri_session.rs, src/gdk_monitor_observer.rs, src/application_runtime.rs | IN PROGRESS | Sessão integrada, observer GDK4, `ApplicationRuntime` RAII e bootstrap GTK4 com callbacks reais de `GtkApplication::activate/shutdown` implementados. Superfície ainda é apenas teste; pendem matching de QScreen/superfícies, hotplug físico multi-monitor e validação visual/funcional |
+| Niri IPC state/events/actions + outputs | services/NiriService.qml, services/MonitorService.qml, scripts/monitors.py; src/niri.rs, src/niri_process.rs, src/niri_actions.rs, src/niri_outputs.rs, src/niri_session.rs, src/gdk_monitor_observer.rs, src/application_runtime.rs, src/ui/gtk_event_bridge.rs | IN PROGRESS | Snapshot atômico revisionado, bridge sem polling até main context, matching GDK↔Niri por connector/geometry, disconnect explicitado; permanecem testes físicos de hotplug/geometry e validação real de reconnect |
 | Compositor info | services/CompositorService.qml | AUDITED | Niri version probe; config path read-only |
 | Shortcut catalogue | services/ShortcutService.qml | AUDITED | 32 shell actions; binding edit is intentionally disabled in original |
 | Shortcut UI | settings/KeysSection.qml, bar/island/KeysPanel.qml | AUDITED | 32-action catalogue presentation, Niri KDL path, explicit no-IPC-bindings explanation and NiriMod handoff |
@@ -85,7 +85,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Night light backend | services/SunsetService.qml | AUDITED | wlsunset, temperatura, toggle e falha |
 | IPC handlers | Commands.qml | AUDITED | targets, verbs, validação, payloads e erros |
 | velatura CLI | ~/.local/bin/velatura | AUDITED | parser, IPC bridge, watch, capture delegation e completion |
-| Velatura Native bootstrap / CLI | src/main.rs, src/ui/bootstrap.rs, scripts/install-dev-cli.sh | IN PROGRESS | GTK4 lifecycle e comandos run/help/version/stop/restart implementados; `ipc` pendente; comando de desenvolvimento separado para preservar CLI legado |
+| Velatura Native bootstrap / CLI | src/main.rs, src/ui/bootstrap.rs, src/ui/gtk_event_bridge.rs, scripts/install-dev-cli.sh | IN PROGRESS | GTK4 lifecycle preservado; snapshot real e eventos chegam ao main context; matching é consultável no runtime; `ipc` pendente. A janela continua diagnóstico temporário; layer-shell, barra e superfícies não fazem parte desta fatia |
 | Scripts Python ativos | scripts/*.py (28 arquivos) | AUDITED | 28/28 lidos integralmente; contratos em BACKEND_AUDIT.md e INTEGRATION_AUDIT.md |
 | UI component inventory | UI_COMPONENT_CATALOG.md | AUDITED | 303 QML components indexed with service/state references, functions, signals and interaction handlers |
 

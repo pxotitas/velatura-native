@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada, observer GDK4 opcional para hotplug/geometry e `ApplicationRuntime` RAII. Bootstrap GTK4 mínimo e callbacks reais de lifecycle já existem; ainda pendem protótipo GTK layer-shell, interface visual 1:1 e validação ampla de runtime/paridade. Nenhuma funcionalidade marcada como VERIFIED.
+**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada, snapshot cacheado/revisionado, bridge GTK sem polling, matching GDK↔Niri e `ApplicationRuntime` RAII. Ainda pendem protótipo GTK layer-shell, interface visual 1:1 e validação física ampla de runtime/paridade. Nenhuma funcionalidade marcada como VERIFIED.
 
 ## Fase 0 — Preparação
 
@@ -99,6 +99,13 @@
 - [ ] Completar build/link do executável e validar a primeira abertura no Niri; a compilação foi interrompida ao atingir temperatura de CPU acima do limite operacional de 90 °C.
 - [x] CLI de desenvolvimento com `run`, `help`, `version`, `stop` e `restart`; `ipc` permanece pendente e nunca faz fallback para `qs`. Instalador usa `~/.local/bin/velatura-native`, preservando o comando legado.
 - [ ] Protótipo GTK layer-shell isolado.
+- [x] Expor snapshot Niri/output atômico e revisionado por `NiriSession`/`ApplicationRuntime`; estado inicial vazio e canal de eventos de consumidor único.
+- [x] Encaminhar eventos pelo `GtkEventBridge` ao main context sem polling; encerrar bridge depois do runtime no shutdown atual.
+- [x] Corresponder GDK↔Niri por connector exato e fallback de geometria lógica única; atualizar inventário em hotplug/geometry e solicitar refresh coalescido.
+- [ ] Simular hotplug físico, desconexão/reconexão real do Niri e alteração geométrica real em execução isolada.
+- [ ] Iniciar implementação da barra GTK após disponibilizar à UI snapshot inicial e bridge de eventos Niri não bloqueante, com teardown vinculado ao `ApplicationRuntime`; `build_bootstrap_window(app, monitor_count, refresh)` deve manter a assinatura. Hoje só há refresh handle, contagem GDK e um `NiriSession` de consumo síncrono (`recv`), sem snapshot cacheado/stream GTK, matching GDK↔Niri nem ações públicas de domínio. Contrato-base e lacunas estão em `APP_API_CONTRACT.md`/`APP_API_REVIEW.md`; alinhar o bridge com backend antes de conectar UI.
+- [ ] Confirmar `gtk4-layer-shell` e comportamento no Niri em configuração isolada antes de criar superfícies por output; não tratar `ApplicationWindow` como equivalente à layer surface.
+- [ ] Portar a primeira fatia auditada da barra somente após o bridge: estados reais de output/foco/workspaces, geometria estável, máscara/input/foco e handover da ilha. Não desenhar dados ou ações de domínio com mocks como se fossem funcionais.
 
 ## Fase 4 — Portabilidade
 
@@ -117,7 +124,7 @@
 
 - [ ] Paridade visual por screenshot.
 - [ ] Paridade funcional por checklist.
-- [ ] Teste multi-monitor e hotplug.
+- [ ] Teste multi-monitor e hotplug físico (matching determinístico coberto por testes unitários; evento real pendente).
 - [ ] Teste de reconexão Niri.
 - [ ] Teste de ausência de serviços/dispositivos.
 - [ ] Teste prolongado de estabilidade.

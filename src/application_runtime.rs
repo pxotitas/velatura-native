@@ -4,8 +4,10 @@
 //! application's lifetime, and call shutdown from the application's shutdown
 //! path. The UI owns the GLib main loop; this type owns backend workers and
 //! GDK monitor subscriptions.
-use crate::gdk_monitor_observer::{GdkMonitorObserver, GdkMonitorObserverError};
-use crate::niri_session::NiriSession;
+use crate::gdk_monitor_observer::{GdkMonitorInfo, GdkMonitorObserver, GdkMonitorObserverError};
+use crate::gdk_monitor_observer::{MonitorMatch, match_gdk_monitors};
+use crate::niri_session::{NiriSession, NiriSessionEvent, NiriSessionSnapshot};
+use std::sync::mpsc::Receiver;
 
 #[derive(Debug)]
 pub enum ApplicationRuntimeError {
@@ -58,6 +60,31 @@ impl ApplicationRuntime {
         self.monitor_observer
             .as_ref()
             .map_or(0, GdkMonitorObserver::monitor_count)
+    }
+
+    /// Current GDK monitor inventory, captured on the GTK thread.
+    pub fn monitor_info(&self) -> Vec<GdkMonitorInfo> {
+        self.monitor_observer
+            .as_ref()
+            .map_or_else(Vec::new, GdkMonitorObserver::monitor_info)
+    }
+
+    /// Resolve current GDK monitors to the latest active Niri output inventory.
+    pub fn monitor_matches(&self) -> Vec<MonitorMatch> {
+        let Some(outputs) = self.snapshot().outputs else {
+            return Vec::new();
+        };
+        match_gdk_monitors(&self.monitor_info(), &outputs)
+    }
+
+    /// Get the latest atomic Niri/output snapshot for presentation adapters.
+    pub fn snapshot(&self) -> NiriSessionSnapshot {
+        self.session().snapshot()
+    }
+
+    /// Transfer the session's single event consumer to the presentation bridge.
+    pub fn take_events(&mut self) -> Option<Receiver<NiriSessionEvent>> {
+        self.session.as_mut()?.take_events()
     }
 
     /// Disconnect UI-thread GDK observers before stopping backend workers.

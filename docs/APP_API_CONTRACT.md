@@ -996,18 +996,21 @@ A implementação opcional `gdk4-observer` conecta o contrato de Monitor à topo
 
 - `GdkMonitorObserver` observa o `gio::ListModel` de `GdkDisplay::monitors()`. `items-changed` representa hotplug/remoção; após a alteração, os handlers de geometria são refeitos para a lista atual.
 - Cada `GdkMonitor` ativo recebe `notify::geometry`. Hotplug e geometry chamam somente `NiriRefreshHandle::refresh_outputs()`; o serviço Niri aplica debounce de 120 ms e coalescing e executa `niri msg --json outputs` em worker.
-- O observer não tenta inferir nomes Niri a partir de connector/model GDK. O inventário Niri continua sendo a fonte para primaryName, internalName e descrições; o matching de uma superfície/QScreen ao output é responsabilidade da futura camada GTK.
+- O observer captura connector, fabricante/modelo, geometria lógica, scale factor e refresh rate. `match_gdk_monitors` associa por connector exato; usa geometria lógica apenas se a associação for única nos inventários GDK e Niri. Fabricante/modelo não são identidade. Match ambíguo, output disabled ou removido fica sem associação.
 - Attach/drop e callbacks GDK pertencem ao main thread/contexto da UI. O observer desconecta o handler da lista e todos os handlers de geometry no Drop.
 - `ApplicationRuntime` possui `NiriSession` e `GdkMonitorObserver` pela vida útil do backend. `shutdown()` é idempotente, desconecta o observer antes de parar/juntar os workers Niri. O frontend acessa o canal de eventos pelo `session()`.
 
-**Integração pendente:** o binário ainda não possui `GtkApplication`; portanto o futuro frontend deve armazenar `ApplicationRuntime` no estado da aplicação durante `activate`, chamar `shutdown` no caminho `shutdown`, e consumir eventos/snapshots no main context sem bloquear. O modelo de entrega do canal (poll, GLib source ou bridge async) deve ser definido junto com a decisão GTK direto vs Relm4/runtime. Este adapter não cria janelas, layer-shell ou superfícies e não valida paridade visual.
+**Integração concluída nesta fatia:** `GtkApplication` mantém `ApplicationRuntime` nos callbacks existentes; `GtkEventBridge` recebe o canal único em worker bloqueante e despacha no main context via GLib. O shutdown para/junta primeiro o backend e depois junta o bridge. Este adapter não cria janelas layer-shell ou superfícies e não valida paridade visual.
 
-O teste de integração feature-gated inicializa GTK, abre o display da sessão atual, confirma pelo menos um monitor GDK e valida attach/shutdown idempotente do runtime. Não simula remoção física nem alteração geométrica; esses cenários permanecem na fase de validação multi-monitor.
+O teste de integração feature-gated inicializa GTK, abre o display da sessão atual, confirma pelo menos um monitor GDK e valida attach/shutdown idempotente do runtime. Testes puros cobrem matching exato, fallback geométrico único, ambiguidade, remoção e output disabled. Não simulam remoção física nem alteração geométrica no display.
 
 ## 17. Bootstrap GTK4 e ownership do runtime (16/11/2026)
 
 - O binário GTK4 é `src/main.rs`; o callback `activate` cria `ApplicationRuntime` uma única vez e o mantém enquanto a aplicação estiver ativa.
 - O callback `shutdown` retira o runtime e chama `shutdown()`; observer GDK é desconectado antes de os workers Niri serem parados/joinados.
 - A superfície temporária recebe `monitor_count` e um `NiriRefreshHandle` cloneável. O handle apenas enfileira solicitação de refresh; não expõe subprocessos, canais internos ou estado mutável.
-- A janela não faz polling de estado nem I/O bloqueante. O stream completo de eventos ainda precisa de uma ponte GLib/main-context para a UI; não presumir que já esteja ligado visualmente.
+- A janela não faz polling de estado nem I/O bloqueante. `GtkEventBridge` encaminha snapshots/eventos da sessão ao main context; a superfície continua diagnóstica e não declara paridade visual.
 - A CLI de desenvolvimento não deve encaminhar `ipc` para `qs`; IPC nativo permanece pendente até existir contrato e handlers reais.
+- `NiriSessionSnapshot` inclui revisão monotônica e cache consistente de Niri + outputs; revisão inicial 0 tem workspaces/janelas vazios e outputs `None`. `ApplicationRuntime::snapshot()` não realiza I/O nem duplica lógica do reducer.
+- `ApplicationRuntime::take_events()` transfere o receiver de consumidor único ao bridge; chamadas `recv*` posteriores respondem desconectado.
+- `ApplicationRuntime::monitor_matches()` combina a lista GDK atual com o snapshot de outputs atual. Recompute após evento de snapshot; callbacks de hotplug/geometria já atualizam o inventário GDK e solicitam refresh Niri.

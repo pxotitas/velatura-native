@@ -213,7 +213,7 @@ Foi adicionado `src/niri_outputs.rs`, portando o contrato de leitura de `service
 
 Validação: parser comparado com a saída real do Niri 26.04 e com o helper Python original na sessão atual (eDP-1, Apple Computer Inc Color LCD, 1440×900 lógico, escala 1.0, modo 1440×900@59.996). Testes cobrem normalização, wrappers, erros, preservação de ordem, helpers derivados, WorkspacesChanged, debounce/coalescing e cancelamento. Em 16/11/2026, 21 testes passaram; fmt, Clippy com warnings negados e diff check também passaram.
 
-**Limites:** os sinais de hotplug e geometry ainda não estão conectados a um adapter GDK/GTK, pois a escolha e implementação da UI/lifecycle continuam abertas. A API `request_refresh()` é a porta de entrada para essa integração futura. Nenhuma configuração do Niri, Kanshi ou do sistema foi alterada.
+**Limites à época:** hotplug e geometry foram conectados posteriormente ao observer GDK. A API `request_refresh()` continua sendo a porta de entrada. Nenhuma configuração do Niri, Kanshi ou do sistema foi alterada.
 
 
 ## Quarta fatia de implementação — sessão Niri integrada (16/11/2026)
@@ -246,7 +246,16 @@ A dependência GDK4 é opcional e o feature não é default: consumidores purame
 
 **Validação executada em 16/11/2026:** `cargo test` passou com 23 testes; `cargo test --features gdk4-observer` passou com 24 testes. O teste feature-gated inicializou GTK, abriu o display Wayland atual, encontrou pelo menos um monitor GDK, anexou o observer e confirmou shutdown idempotente. `cargo clippy --all-targets --all-features -- -D warnings`, `cargo fmt --check` e `git diff --check` também passaram. Isso valida attach/enumeration/teardown no ambiente presente, não simula hotplug físico nem mudança real de geometria, e não valida paridade visual da UI.
 
-**Limites explícitos:** nenhuma janela GTK, layer-shell, barra, ilha ou painel foi criado; não há screenshots para comparação visual. Não se declara hotplug físico ou alteração real de geometria testados só por instalar handlers. A escolha Relm4 vs GTK4 direto e o modelo assíncrono global continuam pendentes.
+**Limites explícitos:** nenhuma layer surface, barra, ilha ou painel foi criado; não há screenshots para comparação visual. Hotplug físico e alteração real de geometria ainda não foram simulados. A escolha Relm4 vs GTK4 direto e o modelo assíncrono global continuam pendentes.
+
+## Ponte GTK — snapshot, eventos e matching de monitores (16/11/2026)
+
+- `NiriSessionSnapshot` agrega o estado reduzido do compositor e o último inventário de outputs em um único valor clonado. Cada publicação recebe revisão monotônica antes de emitir `SnapshotChanged`; `NiriSession::snapshot()` lê o cache protegido por `RwLock`, sem I/O nem duplicação das regras do reducer. Revisão 0 representa estado vazio antes dos primeiros dados.
+- `ApplicationRuntime` expõe `snapshot()`, `monitor_info()`, `monitor_matches()` e `take_events()`. A transferência do receiver é explícita e única; depois dela, `recv*` devolve `Disconnected`.
+- `GtkEventBridge` possui um worker bloqueado em `Receiver::recv()` e usa `glib::MainContext::invoke` para despachar callbacks no contexto GTK. Não há polling, runtime adicional ou dependência nova. No shutdown, a sessão é parada/juntada primeiro; então `GtkEventBridge::join()` aguarda o fechamento do canal. Os callbacks atuais do `GtkApplication` são preservados.
+- A janela temporária apresenta revisão, conexão e contagem de outputs do snapshot real; cada novo snapshot atualiza seu título no main context. Nenhum comando IPC ou de domínio foi adicionado.
+- O matching GDK→Niri usa connector exato e, se indisponível, geometria lógica única nos dois inventários. Fabricante/modelo não são identidade; ambiguidade, output disabled e output removido ficam sem associação. `items-changed` e `notify::geometry` atualizam os dados GDK e enfileiram refresh Niri, mantendo debounce/coalescing no serviço existente.
+- Testes cobrem estado inicial vazio, snapshots/revisões coerentes, ordem e thread do contexto GTK, fechamento/desconexão, matching por connector/geometry, ambiguidade e outputs removidos/desabilitados. Hotplug físico e alteração física de geometria não foram simulados.
 
 ## Sexta fatia de implementação — bootstrap GTK4 e CLI de desenvolvimento (16/11/2026)
 
