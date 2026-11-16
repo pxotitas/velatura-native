@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); helpers/setup fonte lidos; UI visual e testes de runtime ainda pendentes. Nenhuma implementação Rust iniciada e nenhuma funcionalidade marcada como VERIFIED.
+**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust iniciada com crate velatura-core e redutor puro dos eventos Niri. Processo IPC, actions, reconnect, integração GTK, UI visual e validação de runtime/paridade ainda pendentes. Nenhuma funcionalidade marcada como VERIFIED.
 
 ## Fase 0 — Preparação
 
@@ -82,7 +82,11 @@
 
 ## Fase 3 — Fundação
 
-- [ ] Cargo workspace/projeto.
+- [x] Criar crate Rust inicial `velatura-core` com Cargo.lock e módulo de domínio independente de GTK.
+- [x] Implementar redutor puro do event stream Niri, preservando handlers, estado e sinais observáveis do NiriService.qml; sete testes iniciais cobrem fixture, handshake, foco/urgência, eventos de janela/workspace, JSON inválido e eventos desconhecidos.
+- [ ] Implementar supervisor do processo `niri msg --json event-stream`, incluindo saída stderr/exit code e reconexão somente para exit não-zero com atraso de 3000ms, conforme o original.
+- [ ] Implementar fila serial de `niri msg action` com argumentos separados, sem shell e sem receipt inventado.
+- [ ] Integrar `niri msg --json outputs` e refresh de monitores acionado por WorkspacesChanged/hotplug/geometry com debounce e coalescing equivalentes.
 - [ ] Logging e diagnóstico.
 - [ ] Configuração e schema versionado.
 - [ ] Event bus.

@@ -2,7 +2,7 @@
 
 Reconstrução nativa do Velatura para Linux, preservando identidade visual, comportamento e funcionalidades do shell original.
 
-**Estado:** documentação e planejamento. Nenhuma implementação nativa foi iniciada.
+**Estado:** implementação do backend iniciada. O primeiro módulo Rust é o redutor puro do event stream Niri; processo, reconnect, ações e integração GTK ainda não foram implementados.
 **Fonte de referência:** /home/px/.config/quickshell (instalação original; manter intacta).
 
 ## Objetivo

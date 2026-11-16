@@ -167,10 +167,20 @@ O draft está em [APP_API_CONTRACT.md](APP_API_CONTRACT.md), com parecer em [APP
 - estado multi-monitor com Virtual-1 como output normal e no máximo uma ilha live;
 - fixtures sintéticas para snapshot inicial e eventos incrementais em docs/fixtures/ (não funcionais, apenas para composição frontend).
 
-**Importante:** contrato v0.1-draft, não pronto e não congelado. Além da revisão de Codeína, faltam contratos de estados/comandos de serviços e superfícies, lifecycle/recovery, compatibilidade e migração; Capture Window segue bloqueado por `root.windowUnder()` sem definição. A decisão concreta de EventStream/GLib/Tokio, Relm4 vs GTK4 direto e transporte permanece aberta; este documento não toma essas decisões. Atualizações devem ser acompanhadas de fixtures. Nenhum crate ou código Rust foi criado nesta etapa.
+**Importante:** contrato v0.1-draft, não pronto e não congelado. Além da revisão de Codeína, faltam contratos de estados/comandos de serviços e superfícies, lifecycle/recovery, compatibilidade e migração; Capture Window segue bloqueado por `root.windowUnder()` sem definição. A decisão concreta de EventStream/GLib/Tokio, Relm4 vs GTK4 direto e transporte permanece aberta; este documento não toma essas decisões. Atualizações devem ser acompanhadas de fixtures. O primeiro código Rust foi iniciado em 16/11/2026; o estado atual dessa fatia está registrado abaixo.
 
 ## Auditoria visual e funcional estática (15/11/2026)
 
 A auditoria das superfícies raiz e componentes visuais está em [UI_SURFACE_AUDIT.md](UI_SURFACE_AUDIT.md); o índice mecânico de 303 componentes ativos, com serviços, funções, signals e handlers, está em [UI_COMPONENT_CATALOG.md](UI_COMPONENT_CATALOG.md). Foram mapeados os 22 módulos, 26 IDs de painel da ilha, 16 block faces, 14 seções de Settings, 11 jogos, faces Modern/Analogue/Sticker, Dock, Deck, Lock e Capture.
 
 Esta etapa é de leitura estática, não de paridade verificada. Screenshots, input real, hotplug, layer-shell, lock/PAM, webcam, capture/OCR e benchmarks ficam para a fase de validação. O modo Capture Window permanece bloqueado até resolver a chamada sem definição root.windowUnder().
+
+## Primeira fatia de implementação — Niri (16/11/2026)
+
+O repositório agora contém o crate Rust `velatura-core` (biblioteca, edition 2024), com `serde_json` como dependência inicial e sem runtime assíncrono escolhido. A primeira unidade implementada é `src/niri.rs`: um redutor puro de linhas JSONL para estado Niri, separado de processo, UI e efeitos no sistema.
+
+A implementação foi comparada com a fonte ativa `/home/px/.config/quickshell/services/NiriService.qml` e cobre os dez handlers observados: WorkspacesChanged, WindowsChanged, WindowOpenedOrChanged, WindowClosed, WindowFocusChanged, WorkspaceActivated, WindowUrgencyChanged, WorkspaceUrgencyChanged, WorkspaceActiveWindowChanged e WindowLayoutsChanged. Eventos válidos desconhecidos continuam sendo encaminhados sem projeção; handshake, JSON inválido, connected e persistência de lastError seguem as particularidades do adapter original.
+
+A suíte inicial usa fixtures sintéticas e testes unitários, sem alterar a sessão Niri. Em 16/11/2026, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` e `cargo test` passaram; o probe read-only `niri msg --json outputs` respondeu com o output atual. Um probe curto do event stream confirmou o handshake/snapshot inicial e eventos adicionais do Niri 26.04; nenhum título ou estado real de janela foi gravado em fixtures.
+
+**Limite atual:** isto ainda não é um adapter Niri funcional de ponta a ponta. Faltam supervisor do processo JSONL, tratamento de stderr/exit, reconnect de 3000ms apenas em exit não-zero, fila serial de actions, consulta/refresh de outputs e integração com o ciclo de vida da aplicação. Não foi escolhido Tokio, Relm4, GTK direto nem um contrato final de eventos. O contrato Backend ↔ Codeína continua draft.
