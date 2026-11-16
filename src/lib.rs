@@ -9,3 +9,8 @@ pub mod niri_outputs;
 pub mod niri_process;
 
 pub mod niri_session;
+
+#[cfg(feature = "gdk4-observer")]
+pub mod application_runtime;
+#[cfg(feature = "gdk4-observer")]
+pub mod gdk_monitor_observer;

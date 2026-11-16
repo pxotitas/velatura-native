@@ -16,7 +16,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Island state arbitration | bar/island/IslandState.qml | AUDITED | prioridade panel/notification/OSD/summary/modules, timeout, handover e dismiss |
 
 
-| Niri IPC state/events/actions + outputs | services/NiriService.qml, services/MonitorService.qml, scripts/monitors.py; src/niri.rs, src/niri_process.rs, src/niri_actions.rs, src/niri_outputs.rs, src/niri_session.rs | IN PROGRESS | Sessão integrada coordena event stream, reducer, canal de snapshots/sinais, fila serial, outputs e refresh por WorkspacesChanged; lifecycle RAII da sessão testado. GDK/GTK hotplug/geometry, lifecycle global da app e validação em UI ainda pendentes |
+| Niri IPC state/events/actions + outputs | services/NiriService.qml, services/MonitorService.qml, scripts/monitors.py; src/niri.rs, src/niri_process.rs, src/niri_actions.rs, src/niri_outputs.rs, src/niri_session.rs, src/gdk_monitor_observer.rs, src/application_runtime.rs | IN PROGRESS | Sessão integrada, observer GDK4 para hotplug/geometry e `ApplicationRuntime` RAII implementados; teste feature-gated abre display atual e confirma monitores. Ainda pendem ligação ao GtkApplication real, matching de QScreen/superfícies, hotplug físico multi-monitor e validação visual/funcional |
 | Compositor info | services/CompositorService.qml | AUDITED | Niri version probe; config path read-only |
 | Shortcut catalogue | services/ShortcutService.qml | AUDITED | 32 shell actions; binding edit is intentionally disabled in original |
 | Shortcut UI | settings/KeysSection.qml, bar/island/KeysPanel.qml | AUDITED | 32-action catalogue presentation, Niri KDL path, explicit no-IPC-bindings explanation and NiriMod handoff |

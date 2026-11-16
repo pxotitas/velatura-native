@@ -231,4 +231,19 @@ A API expõe um único canal de eventos (`recv`, `recv_timeout`, `try_recv`) com
 
 Teste de integração com executável Niri fake cobre handshake, projeção de workspace, consulta inicial de outputs, segundo refresh acionado por `WorkspacesChanged`, preservação de argv com espaços em actions e parada/join da sessão. Em 16/11/2026, a suíte completa contém 23 testes; `cargo test`, `cargo clippy --all-targets -- -D warnings`, `cargo fmt --check` e `git diff --check` passaram.
 
-**Limites explícitos:** ainda não há observador GDK/GTK para hotplug/geometry, seleção de QScreen, integração ao lifecycle global da aplicação, logging estruturado, contrato final com Codeína ou teste visual/funcional das superfícies. O adapter de sessão não altera configurações do Niri nem executa ações reais durante os testes.
+**Limites desta fatia (atualizados na quinta fatia):** à época ainda não havia observador GDK/GTK nem dono de lifecycle do backend; ambos foram adicionados abaixo. Permanecem pendentes seleção/matching de QScreen para superfícies, integração do `ApplicationRuntime` ao `GtkApplication` real, logging estruturado, contrato final com Codeína e validação visual/funcional. O adapter de sessão não altera configurações do Niri.
+
+
+## Quinta fatia de implementação — GDK monitor observer e application runtime (16/11/2026)
+
+Foi adicionado o feature opcional `gdk4-observer` (GDK4 Rust bindings 0.10.3, compatível com o MSRV declarado de Rust 1.85) e dois módulos:
+
+- `src/gdk_monitor_observer.rs`: observa `GdkDisplay::monitors()` via `gio::ListModel::items-changed`; reconecta os handlers de geometria após alterações da lista e acompanha `GdkMonitor::notify::geometry` em cada monitor ativo. Hotplug e alteração geométrica chamam somente `NiriRefreshHandle::refresh_outputs()`; o debounce/coalescing de 120 ms permanece centralizado no serviço Niri.
+- `src/application_runtime.rs`: dono RAII do `NiriSession` e do observador GDK para uma vida útil da aplicação. `start()` deve ser chamado após a inicialização do GTK/GDK; `shutdown()` é idempotente, desconecta o observador primeiro e então encerra/junta os workers Niri. O runtime fornece acesso ao canal de eventos/snapshots e ao número atual de monitores.
+- `NiriSession::refresh_handle()`: handle clonável para adapters de UI sem expor os canais/worker internos.
+
+A dependência GDK4 é opcional e o feature não é default: consumidores puramente backend continuam sem dependência gráfica. O módulo exige que attach/drop e processamento de callbacks aconteçam no main thread/contexto GDK. O tipo `ApplicationRuntime` é o proprietário do lifecycle do backend; ainda precisa ser armazenado pelo futuro `GtkApplication` no caminho activate e encerrado no caminho shutdown. Não há binário de aplicação nem integração com Relm4 nesta fatia.
+
+**Validação executada em 16/11/2026:** `cargo test` passou com 23 testes; `cargo test --features gdk4-observer` passou com 24 testes. O teste feature-gated inicializou GTK, abriu o display Wayland atual, encontrou pelo menos um monitor GDK, anexou o observer e confirmou shutdown idempotente. `cargo clippy --all-targets --all-features -- -D warnings`, `cargo fmt --check` e `git diff --check` também passaram. Isso valida attach/enumeration/teardown no ambiente presente, não simula hotplug físico nem mudança real de geometria, e não valida paridade visual da UI.
+
+**Limites explícitos:** nenhuma janela GTK, layer-shell, barra, ilha ou painel foi criado; não há screenshots para comparação visual. Não se declara hotplug físico ou alteração real de geometria testados só por instalar handlers. A escolha Relm4 vs GTK4 direto e o modelo assíncrono global continuam pendentes.

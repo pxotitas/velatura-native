@@ -2,7 +2,7 @@
 
 Reconstrução nativa do Velatura para Linux, preservando identidade visual, comportamento e funcionalidades do shell original.
 
-**Estado:** implementação do backend iniciada. O primeiro módulo Rust é o redutor puro do event stream Niri; processo, reconnect, ações e integração GTK ainda não foram implementados.
+**Estado:** fundação do backend Niri implementada: reducer, supervisor/reconnect, fila de actions, outputs, sessão integrada, observer GDK4 opcional e dono RAII do lifecycle do backend. Ainda não há binário GtkApplication, superfícies GTK/layer-shell ou validação visual 1:1.
 **Fonte de referência:** /home/px/.config/quickshell (instalação original; manter intacta).
 
 ## Objetivo
@@ -54,3 +54,22 @@ A instalação original está em /home/px/.config/quickshell. Ela contém aproxi
 5. Atualize docs/PORTING_MATRIX.md e docs/TASKS.md conforme o trabalho realmente avança.
 
 Não iniciar autostart nem substituir o shell atual até haver paridade suficiente, testes e autorização explícita.
+
+
+## Build e validação do backend
+
+O core permanece independente de GTK por padrão:
+
+```bash
+cargo test
+cargo clippy --all-targets -- -D warnings
+```
+
+O observer GDK4 e o dono do lifecycle da aplicação são opcionais:
+
+```bash
+cargo test --features gdk4-observer
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+O feature `gdk4-observer` requer GTK4/GDK4 de desenvolvimento instalados. O futuro frontend deve inicializar GTK, criar `ApplicationRuntime` no caminho de ativação da aplicação e chamar `shutdown()` no encerramento. Ainda não existe executável gráfico neste repositório.

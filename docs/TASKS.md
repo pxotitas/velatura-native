@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada (event stream + reducer + outputs + actions), além de refresh acionado por WorkspacesChanged e ciclo de vida RAII próprio. Integração GDK/GTK de hotplug/geometry, lifecycle global da aplicação, UI visual e validação ampla de runtime/paridade ainda pendentes. Nenhuma funcionalidade marcada como VERIFIED.
+**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada, observer GDK4 opcional para hotplug/geometry e `ApplicationRuntime` RAII. Ainda pendem integração do runtime ao `GtkApplication` real, protótipo GTK layer-shell, interface visual e validação ampla de runtime/paridade. Nenhuma funcionalidade marcada como VERIFIED.
 
 ## Fase 0 — Preparação
 
@@ -86,13 +86,15 @@
 - [x] Implementar redutor puro do event stream Niri, preservando handlers, estado e sinais observáveis do NiriService.qml; sete testes iniciais cobrem fixture, handshake, foco/urgência, eventos de janela/workspace, JSON inválido e eventos desconhecidos.
 - [x] Implementar supervisor do processo `niri msg --json event-stream`, incluindo stdout JSONL, stderr, exit code, parada explícita e reconexão somente para exit não-zero com atraso de 3000ms, conforme o original; testes com executável fake.
 - [x] Implementar fila serial de `niri msg action` com argumentos separados, sem shell, preservando FIFO e reportando o resultado real do subprocesso sem receipt de aceite inventado.
-- [x] Implementar `niri msg --json outputs`, normalização equivalente a monitors.py, primary/internal/description helpers, timeout, debounce de 120ms, coalescing, cancelamento e refresh acionado por WorkspacesChanged; `request_refresh()` aguarda ligação aos sinais GDK/GTK de hotplug/geometry.
+- [x] Implementar `niri msg --json outputs`, normalização equivalente a monitors.py, primary/internal/description helpers, timeout, debounce de 120ms, coalescing, cancelamento e refresh acionado por WorkspacesChanged.
+- [x] Implementar observer GDK4 opcional para `GListModel::items-changed` (hotplug) e `GdkMonitor::notify::geometry`; callbacks só solicitam refresh ao serviço Niri. Handlers são reconectados ao mudar a lista e desconectados no Drop.
 - [ ] Logging e diagnóstico.
 - [ ] Configuração e schema versionado.
 - [x] Canal de eventos da sessão Niri: snapshots coerentes, sinais do compositor, diagnósticos, erros de protocolo, outputs e resultados de actions.
-- [x] Ciclo de vida RAII da sessão Niri: inicialização coordenada, parada explícita e join dos workers. Lifecycle global da aplicação permanece pendente.
+- [x] Ciclo de vida RAII da sessão Niri: inicialização coordenada, parada explícita e join dos workers.
+- [x] `ApplicationRuntime` como dono do backend por vida útil: inicia sessão + observer, expõe eventos e encerra observer antes dos workers; integração ao `GtkApplication::activate/shutdown` permanece pendente até existir o app.
 - [x] Adapter de sessão Niri (event stream + reducer + actions). Abstração genérica de compositor permanece pendente.
-- [x] Adapter de outputs Niri com refresh inicial, WorkspacesChanged e API pública para refresh solicitado pela UI; GDK/GTK hotplug/geometry permanece pendente.
+- [x] Adapter de outputs Niri com refresh inicial, WorkspacesChanged e refresh solicitado pela UI/GDK; teste físico de hotplug e geometria em multi-monitor permanece pendente.
 - [ ] Protótipo GTK layer-shell isolado.
 
 ## Fase 4 — Portabilidade

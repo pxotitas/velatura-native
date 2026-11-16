@@ -85,6 +85,17 @@ impl NiriSession {
         self.send(SessionCommand::RefreshOutputs)
     }
 
+    /// Create a lightweight handle for GDK/GTK observers and other adapters.
+    pub fn refresh_handle(&self) -> NiriRefreshHandle {
+        NiriRefreshHandle {
+            commands: self
+                .commands
+                .as_ref()
+                .expect("Niri session is stopped")
+                .clone(),
+        }
+    }
+
     /// Receive the next state, diagnostic, process or action event.
     pub fn recv(&self) -> Result<NiriSessionEvent, mpsc::RecvError> {
         self.events.recv()
@@ -235,6 +246,20 @@ fn publish_snapshot(
         .is_err()
     {
         *running = false;
+    }
+}
+
+/// Cloneable command handle for adapters that only need to request output refreshes.
+#[derive(Clone)]
+pub struct NiriRefreshHandle {
+    commands: Sender<SessionCommand>,
+}
+
+impl NiriRefreshHandle {
+    pub fn refresh_outputs(&self) -> Result<(), mpsc::SendError<()>> {
+        self.commands
+            .send(SessionCommand::RefreshOutputs)
+            .map_err(|_| mpsc::SendError(()))
     }
 }
 

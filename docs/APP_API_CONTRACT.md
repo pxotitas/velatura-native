@@ -988,3 +988,18 @@ Esses auxiliares são tipos candidatos, não shape final. DockOutputPolicy deve 
 Este contrato permanece draft e **não pode ser congelado nem usado como especificação completa de implementação 1:1** até fechar os bloqueadores registrados em `docs/APP_API_REVIEW.md`. O `ServiceId` contém 61 IDs únicos, cobrindo nominalmente os 61 serviços catalogados; isso não valida completude de snapshots, eventos, comandos ou lifecycle. Os tipos das seções 13–14 são propostas parciais, não APIs aprovadas.
 
 `Capture Window` está BLOCKED. A fonte ativa contém a chamada sem definição `root.windowUnder(mouse.x, mouse.y)` em `capture/CaptureOverlay.qml`; `services/CaptureService.qml` declara apenas `region`/`screen`, registra que o Niri IPC não expõe retângulos globais e diz que um fluxo nativo separado não foi ligado. `scripts/capture.py` não implementa seleção de janela. Não há contrato de substituição: localizar a implementação original ou reproduzir e documentar o comportamento/defeito antes de decidir qualquer semântica.
+
+
+## 16. Integração GDK4 de monitores e lifecycle do backend
+
+A implementação opcional `gdk4-observer` conecta o contrato de Monitor à topologia do display sem acoplar o reducer Niri à UI:
+
+- `GdkMonitorObserver` observa o `gio::ListModel` de `GdkDisplay::monitors()`. `items-changed` representa hotplug/remoção; após a alteração, os handlers de geometria são refeitos para a lista atual.
+- Cada `GdkMonitor` ativo recebe `notify::geometry`. Hotplug e geometry chamam somente `NiriRefreshHandle::refresh_outputs()`; o serviço Niri aplica debounce de 120 ms e coalescing e executa `niri msg --json outputs` em worker.
+- O observer não tenta inferir nomes Niri a partir de connector/model GDK. O inventário Niri continua sendo a fonte para primaryName, internalName e descrições; o matching de uma superfície/QScreen ao output é responsabilidade da futura camada GTK.
+- Attach/drop e callbacks GDK pertencem ao main thread/contexto da UI. O observer desconecta o handler da lista e todos os handlers de geometry no Drop.
+- `ApplicationRuntime` possui `NiriSession` e `GdkMonitorObserver` pela vida útil do backend. `shutdown()` é idempotente, desconecta o observer antes de parar/juntar os workers Niri. O frontend acessa o canal de eventos pelo `session()`.
+
+**Integração pendente:** o binário ainda não possui `GtkApplication`; portanto o futuro frontend deve armazenar `ApplicationRuntime` no estado da aplicação durante `activate`, chamar `shutdown` no caminho `shutdown`, e consumir eventos/snapshots no main context sem bloquear. O modelo de entrega do canal (poll, GLib source ou bridge async) deve ser definido junto com a decisão GTK direto vs Relm4/runtime. Este adapter não cria janelas, layer-shell ou superfícies e não valida paridade visual.
+
+O teste de integração feature-gated inicializa GTK, abre o display da sessão atual, confirma pelo menos um monitor GDK e valida attach/shutdown idempotente do runtime. Não simula remoção física nem alteração geométrica; esses cenários permanecem na fase de validação multi-monitor.

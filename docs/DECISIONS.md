@@ -54,3 +54,12 @@ Motivo: proteger a sessão diária do usuário.
 ## Pontos a confirmar na fonte original
 
 - **Capture / window picking:** `CaptureOverlay.qml` chama `root.windowUnder(mouse.x, mouse.y)`, mas não há definição desse método no arquivo nem no checkout ativo. É um candidato a bug/símbolo ausente, não uma decisão de redesign. Reproduzir em runtime ou recuperar a implementação correta antes de especificar/portar o modo Window; não inventar um comportamento substituto.
+
+
+## D-006 — GDK4 observer direto para mudanças de monitor
+
+**Estado:** aceito para a camada de integração de monitores.
+
+O adapter de monitores usa GDK4 diretamente: a lista `GdkDisplay::monitors()` informa inclusão/remoção via `GListModel::items-changed`, e cada `GdkMonitor` informa mudança de geometria via `notify::geometry`. Os callbacks apenas solicitam refresh ao serviço Niri já existente; debounce e subprocessos continuam fora do main thread.
+
+A integração fica atrás do feature opcional `gdk4-observer` e usa GDK4 0.10.x, compatível com o MSRV 1.85 declarado. Isso **não** decide GTK4 direto vs Relm4 para a construção da UI nem escolhe o runtime assíncrono global. O futuro `GtkApplication` deve criar e destruir o observer no main context e manter o `ApplicationRuntime` durante a vida da aplicação.
