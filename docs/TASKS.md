@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust iniciada com crate velatura-core, redutor Niri, supervisor do event stream e fila serial de actions. Outputs/monitor refresh, integração GTK, UI visual e validação de runtime/paridade ainda pendentes. Nenhuma funcionalidade marcada como VERIFIED.
+**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui redutor Niri, supervisor do event stream, fila serial de actions e consulta/normalização de outputs com debounce/coalescing. Integração GDK/GTK de hotplug/geometry, lifecycle, UI visual e validação ampla de runtime/paridade ainda pendentes. Nenhuma funcionalidade marcada como VERIFIED.
 
 ## Fase 0 — Preparação
 
@@ -86,7 +86,7 @@
 - [x] Implementar redutor puro do event stream Niri, preservando handlers, estado e sinais observáveis do NiriService.qml; sete testes iniciais cobrem fixture, handshake, foco/urgência, eventos de janela/workspace, JSON inválido e eventos desconhecidos.
 - [x] Implementar supervisor do processo `niri msg --json event-stream`, incluindo stdout JSONL, stderr, exit code, parada explícita e reconexão somente para exit não-zero com atraso de 3000ms, conforme o original; testes com executável fake.
 - [x] Implementar fila serial de `niri msg action` com argumentos separados, sem shell, preservando FIFO e reportando o resultado real do subprocesso sem receipt de aceite inventado.
-- [ ] Integrar `niri msg --json outputs` e refresh de monitores acionado por WorkspacesChanged/hotplug/geometry com debounce e coalescing equivalentes.
+- [x] Implementar `niri msg --json outputs`, normalização equivalente a monitors.py, primary/internal/description helpers, timeout, debounce de 120ms, coalescing, cancelamento e refresh acionado por WorkspacesChanged; `request_refresh()` aguarda ligação aos sinais GDK/GTK de hotplug/geometry.
 - [ ] Logging e diagnóstico.
 - [ ] Configuração e schema versionado.
 - [ ] Event bus.

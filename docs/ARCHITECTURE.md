@@ -198,3 +198,19 @@ A implementação usa std::process, threads e canais da biblioteca padrão. Isso
 Testes usam executáveis fake temporários e não invocam ações reais do compositor. Em 16/11/2026, 13 testes passaram, incluindo forwarding stdout/stderr, exit limpo sem reconnect, reconnect após exit não-zero com atraso mínimo de 3000 ms medido, parada de child, FIFO de actions e propagação de exit não-zero. Clippy com warnings negados e diff check também foram executados.
 
 **Limites:** ainda falta consumir as mensagens do supervisor no reducer e no event bus, ligar o lifecycle ao app, implementar outputs/monitor refresh e testar reconexão não-zero com uma instância real do Niri. Os módulos não foram ligados automaticamente à sessão nem executaram ações reais.
+
+
+## Terceira fatia de implementação — Niri outputs e refresh de monitores (16/11/2026)
+
+Foi adicionado `src/niri_outputs.rs`, portando o contrato de leitura de `services/MonitorService.qml` e `scripts/monitors.py`:
+
+- Consulta somente leitura a `niri msg --json outputs`, com timeout de 5 segundos, captura separada de stdout/stderr e erro explícito para falha de spawn, exit não-zero, timeout, JSON inválido e resposta `Err`.
+- Normalização 1:1 dos campos consumidos pelo original: name, description, make/model/serial, posição e tamanho lógico, refreshRate em Hz arredondado a 3 casas, mode, scale, transform, disabled, VRR e resoluções agrupadas por dimensão com as frequências disponíveis.
+- Preserva a ordem textual dos outputs do JSON direto do Niri. Isso é necessário porque o fallback de primaryName usa o primeiro output não desabilitado, e um mapa ordenado alfabeticamente mudaria o comportamento.
+- Replica primaryName (focused output com fallback para primeiro output ativo), internalName (prefixos eDP/LVDS/DSI), monitorFor, descriptionFor e isPrimary. A escolha de QScreen/monitor físico equivalente permanece no adapter da UI.
+- A primeira consulta é imediata. Refreshes subsequentes usam debounce de 120 ms e coalescing: se a consulta estiver em andamento, um único refresh pendente é executado após seu término. Eventos WorkspacesChanged podem ser aplicados por `apply_niri_line_with_output_refresh`; o adapter de UI deve chamar `request_refresh()` quando receber hotplug/screens-changed ou geometry-changed.
+- Drop cancela a consulta em andamento; o subprocesso não é deixado rodando após o encerramento normal do serviço.
+
+Validação: parser comparado com a saída real do Niri 26.04 e com o helper Python original na sessão atual (eDP-1, Apple Computer Inc Color LCD, 1440×900 lógico, escala 1.0, modo 1440×900@59.996). Testes cobrem normalização, wrappers, erros, preservação de ordem, helpers derivados, WorkspacesChanged, debounce/coalescing e cancelamento. Em 16/11/2026, 21 testes passaram; fmt, Clippy com warnings negados e diff check também passaram.
+
+**Limites:** os sinais de hotplug e geometry ainda não estão conectados a um adapter GDK/GTK, pois a escolha e implementação da UI/lifecycle continuam abertas. A API `request_refresh()` é a porta de entrada para essa integração futura. Nenhuma configuração do Niri, Kanshi ou do sistema foi alterada.

@@ -16,7 +16,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Island state arbitration | bar/island/IslandState.qml | AUDITED | prioridade panel/notification/OSD/summary/modules, timeout, handover e dismiss |
 
 
-| Niri IPC state/events/actions | services/NiriService.qml; src/niri.rs, src/niri_process.rs, src/niri_actions.rs | IN PROGRESS | Redutor puro, supervisor JSONL (stdout/stderr/exit/stop/reconnect policy) e fila serial argv de actions implementados e testados; outputs/monitor refresh e integração no lifecycle ainda pendentes |
+| Niri IPC state/events/actions + outputs | services/NiriService.qml, services/MonitorService.qml, scripts/monitors.py; src/niri.rs, src/niri_process.rs, src/niri_actions.rs, src/niri_outputs.rs | IN PROGRESS | Redutor, supervisor, fila serial e consulta/normalização de outputs com debounce/coalescing implementados e testados; hook WorkspacesChanged pronto; integração GDK/GTK de hotplug/geometry e lifecycle ainda pendentes |
 | Compositor info | services/CompositorService.qml | AUDITED | Niri version probe; config path read-only |
 | Shortcut catalogue | services/ShortcutService.qml | AUDITED | 32 shell actions; binding edit is intentionally disabled in original |
 | Shortcut UI | settings/KeysSection.qml, bar/island/KeysPanel.qml | AUDITED | 32-action catalogue presentation, Niri KDL path, explicit no-IPC-bindings explanation and NiriMod handoff |
