@@ -247,3 +247,14 @@ A dependência GDK4 é opcional e o feature não é default: consumidores purame
 **Validação executada em 16/11/2026:** `cargo test` passou com 23 testes; `cargo test --features gdk4-observer` passou com 24 testes. O teste feature-gated inicializou GTK, abriu o display Wayland atual, encontrou pelo menos um monitor GDK, anexou o observer e confirmou shutdown idempotente. `cargo clippy --all-targets --all-features -- -D warnings`, `cargo fmt --check` e `git diff --check` também passaram. Isso valida attach/enumeration/teardown no ambiente presente, não simula hotplug físico nem mudança real de geometria, e não valida paridade visual da UI.
 
 **Limites explícitos:** nenhuma janela GTK, layer-shell, barra, ilha ou painel foi criado; não há screenshots para comparação visual. Não se declara hotplug físico ou alteração real de geometria testados só por instalar handlers. A escolha Relm4 vs GTK4 direto e o modelo assíncrono global continuam pendentes.
+
+## Sexta fatia de implementação — bootstrap GTK4 e CLI de desenvolvimento (16/11/2026)
+
+- Adicionado binário `velatura` (feature `gtk-app`) com GTK4 direto, `GtkApplication` e application ID `io.github.pxdritz.velatura`.
+- `src/main.rs` mantém `ApplicationRuntime` em `Rc<RefCell<Option<_>>>`, cria-o no `activate` e chama `shutdown()` no callback `shutdown`; o backend não é duplicado em ativações subsequentes.
+- A aplicação registra a action `quit`, permitindo `gapplication action io.github.pxdritz.velatura quit`; a CLI oferece `run`, `help`, `version`, `stop` e `restart`.
+- `src/ui/bootstrap.rs` é uma janela temporária de teste com contagem de monitores GDK e botão que solicita refresh de outputs por `NiriRefreshHandle`. A UI final e layer-shell não estão implementadas.
+- `ipc` responde explicitamente como não implementado; não faz fallback para `qs` nem envia comandos ao shell legado.
+- `scripts/install-dev-cli.sh` instala um symlink de desenvolvimento em `~/.local/bin/velatura-native`; antes do primeiro build, o launcher chama Cargo com um job e depois prefere o binário compilado. O comando `~/.local/bin/velatura` foi preservado para não interromper o shell original durante a migração.
+- `~/.local/bin` já está no PATH da sessão observada. Nenhuma configuração de shell foi alterada.
+- `cargo check --features gtk-app --bin velatura` passou. O build/link completo e a abertura real ainda não foram validados: a compilação foi interrompida por segurança quando o sensor da CPU ultrapassou 90 °C.

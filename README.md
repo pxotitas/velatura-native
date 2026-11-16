@@ -2,7 +2,7 @@
 
 Reconstrução nativa do Velatura para Linux, preservando identidade visual, comportamento e funcionalidades do shell original.
 
-**Estado:** fundação do backend Niri implementada: reducer, supervisor/reconnect, fila de actions, outputs, sessão integrada, observer GDK4 opcional e dono RAII do lifecycle do backend. Ainda não há binário GtkApplication, superfícies GTK/layer-shell ou validação visual 1:1.
+**Estado:** backend Niri implementado: reducer, supervisor/reconnect, fila de actions, outputs, sessão integrada, observer GDK4 e `ApplicationRuntime`. Bootstrap mínimo GTK4/`GtkApplication` disponível com lifecycle real e superfície temporária de teste; UI final, layer-shell e validação visual 1:1 continuam pendentes.
 **Fonte de referência:** /home/px/.config/quickshell (instalação original; manter intacta).
 
 ## Objetivo
@@ -72,4 +72,27 @@ cargo test --features gdk4-observer
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-O feature `gdk4-observer` requer GTK4/GDK4 de desenvolvimento instalados. O futuro frontend deve inicializar GTK, criar `ApplicationRuntime` no caminho de ativação da aplicação e chamar `shutdown()` no encerramento. Ainda não existe executável gráfico neste repositório.
+O feature `gdk4-observer` requer GTK4/GDK4 de desenvolvimento instalados. O binário GTK4 é habilitado pelo feature `gtk-app`; `src/main.rs` cria o `GtkApplication`, mantém um único `ApplicationRuntime` entre `activate` e `shutdown`, e monta a superfície temporária em `src/ui/bootstrap.rs`.
+
+
+## Executável GTK4 e CLI de desenvolvimento
+
+O bootstrap mínimo é construído com:
+
+```bash
+./scripts/install-dev-cli.sh
+```
+
+O instalador cria `~/.local/bin/velatura-native`, sem substituir o comando legado `~/.local/bin/velatura`. Antes do primeiro build, esse comando usa Cargo como launcher e compila com um job; depois do build, o instalador pode apontar diretamente para o binário. Neste ambiente `~/.local/bin` já está no `PATH`. Comandos disponíveis no bootstrap:
+
+```bash
+velatura-native run
+velatura-native help
+velatura-native version
+velatura-native stop
+velatura-native restart
+```
+
+`ipc` ainda não está implementado e retorna erro explícito; ele não encaminha comandos ao Quickshell antigo. O CLI legado continua preservado até uma migração deliberada.
+
+A janela atual é uma superfície de teste GTK4: confirma inicialização, backend Niri, enumeração GDK de monitores e solicitação manual de refresh. Não representa a UI final nem usa layer-shell.

@@ -1003,3 +1003,11 @@ A implementação opcional `gdk4-observer` conecta o contrato de Monitor à topo
 **Integração pendente:** o binário ainda não possui `GtkApplication`; portanto o futuro frontend deve armazenar `ApplicationRuntime` no estado da aplicação durante `activate`, chamar `shutdown` no caminho `shutdown`, e consumir eventos/snapshots no main context sem bloquear. O modelo de entrega do canal (poll, GLib source ou bridge async) deve ser definido junto com a decisão GTK direto vs Relm4/runtime. Este adapter não cria janelas, layer-shell ou superfícies e não valida paridade visual.
 
 O teste de integração feature-gated inicializa GTK, abre o display da sessão atual, confirma pelo menos um monitor GDK e valida attach/shutdown idempotente do runtime. Não simula remoção física nem alteração geométrica; esses cenários permanecem na fase de validação multi-monitor.
+
+## 17. Bootstrap GTK4 e ownership do runtime (16/11/2026)
+
+- O binário GTK4 é `src/main.rs`; o callback `activate` cria `ApplicationRuntime` uma única vez e o mantém enquanto a aplicação estiver ativa.
+- O callback `shutdown` retira o runtime e chama `shutdown()`; observer GDK é desconectado antes de os workers Niri serem parados/joinados.
+- A superfície temporária recebe `monitor_count` e um `NiriRefreshHandle` cloneável. O handle apenas enfileira solicitação de refresh; não expõe subprocessos, canais internos ou estado mutável.
+- A janela não faz polling de estado nem I/O bloqueante. O stream completo de eventos ainda precisa de uma ponte GLib/main-context para a UI; não presumir que já esteja ligado visualmente.
+- A CLI de desenvolvimento não deve encaminhar `ipc` para `qs`; IPC nativo permanece pendente até existir contrato e handlers reais.

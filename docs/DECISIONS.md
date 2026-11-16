@@ -63,3 +63,11 @@ Motivo: proteger a sessão diária do usuário.
 O adapter de monitores usa GDK4 diretamente: a lista `GdkDisplay::monitors()` informa inclusão/remoção via `GListModel::items-changed`, e cada `GdkMonitor` informa mudança de geometria via `notify::geometry`. Os callbacks apenas solicitam refresh ao serviço Niri já existente; debounce e subprocessos continuam fora do main thread.
 
 A integração fica atrás do feature opcional `gdk4-observer` e usa GDK4 0.10.x, compatível com o MSRV 1.85 declarado. Isso **não** decide GTK4 direto vs Relm4 para a construção da UI nem escolhe o runtime assíncrono global. O futuro `GtkApplication` deve criar e destruir o observer no main context e manter o `ApplicationRuntime` durante a vida da aplicação.
+
+## D-007 — Bootstrap mínimo com GTK4 direto
+
+**Estado:** aceito para o bootstrap e a primeira superfície de teste; não congela a arquitetura final de UI.
+
+O executável inicial usa GTK4 direto para criar `GtkApplication`, manter `ApplicationRuntime` durante `activate`/`shutdown` e exibir uma janela de teste. A UI real pode ser organizada em módulos próprios sem assumir ownership do lifecycle. Relm4 continua possível mediante decisão posterior, sem duplicar a instância da aplicação ou o backend.
+
+O comando de desenvolvimento é instalado como `~/.local/bin/velatura-native`. O comando `~/.local/bin/velatura` pertence ao shell legado e permanece intacto até uma migração deliberada.

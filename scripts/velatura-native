@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_path="$(readlink -f -- "${BASH_SOURCE[0]}")"
+repo_root="$(cd -- "$(dirname -- "$script_path")/.." && pwd)"
+binary="$repo_root/target/debug/velatura"
+
+# Prefer the compiled executable. Before the first build, use Cargo as a
+# development launcher; this compiles with the repository's one-job policy.
+if [[ -x "$binary" ]]; then
+  exec "$binary" "$@"
+fi
+
+# Keep informational commands cheap: they should not compile GTK on first use.
+case "${1:-run}" in
+  help|-h|--help)
+    cat <<'HELP'
+Velatura Native (development)
+uso: velatura-native <comando>
+
+  run       inicia a aplicação GTK4 (padrão)
+  stop      solicita o encerramento da instância ativa
+  restart   encerra e inicia novamente a aplicação
+  version   mostra a versão
+  help      mostra esta ajuda
+
+ipc ainda não está implementado e não encaminha comandos ao Quickshell legado.
+O comando legado 'velatura' permanece intacto durante a migração.
+HELP
+    exit 0
+    ;;
+  version|--version|-V)
+    version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$repo_root/Cargo.toml" | head -n 1)"
+    printf 'Velatura Native %s\n' "$version"
+    exit 0
+    ;;
+  ipc)
+    printf '%s\n' '{"error":"IPC nativo ainda não foi implementado; nenhum comando foi enviado ao shell legado."}' >&2
+    exit 2
+    ;;
+esac
+
+exec cargo run --manifest-path "$repo_root/Cargo.toml" \
+  --features gtk-app --bin velatura --jobs 1 -- "$@"

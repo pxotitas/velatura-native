@@ -14,3 +14,6 @@ pub mod niri_session;
 pub mod application_runtime;
 #[cfg(feature = "gdk4-observer")]
 pub mod gdk_monitor_observer;
+
+#[cfg(feature = "gtk-app")]
+pub mod ui;

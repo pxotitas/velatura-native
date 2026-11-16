@@ -175,3 +175,24 @@ Não instalar, iniciar automaticamente ou substituir o Velatura atual. Trabalhe 
 
 ## Exigência absoluta: paridade visual e interativa 1:1
 Leia docs/PARITY_CONTRACT.md. Não faça redesign, versão lite ou shell genérico. Reproduza todos os componentes, painéis, módulos, estados vazios, menus, hover, atalhos, regras de foco, dimensões, tipografia, ícones, materiais e animações observáveis no original. Não remova componentes porque são difíceis de desenhar. Um botão precisa executar a ação real via backend; placeholders e mocks são apenas temporários e nunca podem ser marcados como concluídos. Compare cada superfície com o QML e screenshots originais. O design.md é o mapa inicial, não autorização para inventar detalhes que ainda não foram auditados.
+
+## Integração com o bootstrap GTK4 existente (obrigatório)
+
+O bootstrap executável já existe e é a autoridade do lifecycle da aplicação:
+
+- `src/main.rs` é dono do `GtkApplication`, do CLI e dos callbacks `activate` / `shutdown`.
+- `ApplicationRuntime` é criado uma única vez no `activate`, mantido durante a vida da aplicação e encerrado no `shutdown`.
+- `src/ui/bootstrap.rs` contém apenas a superfície temporária de teste.
+- `velatura-native` é o comando de desenvolvimento instalado em `~/.local/bin`; use `velatura-native run`, `velatura-native help`, `velatura-native stop` e `velatura-native restart`.
+
+Sua tarefa é substituir a superfície temporária pela UI real e conectar seus componentes ao bootstrap sem duplicar ou mover o lifecycle. Preserve a assinatura pública `build_bootstrap_window(app, monitor_count, refresh)` até combinar uma alteração de contrato com o backend; `refresh` é um `NiriRefreshHandle` cloneável e permite solicitar atualização de outputs sem expor os canais internos.
+
+**Não faça:**
+- não crie outro `GtkApplication`, `main.rs`, binário ou processo de backend;
+- não crie um segundo `ApplicationRuntime` ou sessão Niri;
+- não implemente comandos CLI, `stop/restart`, IPC ou supervisão de processo na UI;
+- não altere o caminho/alias `velatura-native` nem sobrescreva `~/.local/bin/velatura` (o CLI legado permanece intacto durante a migração);
+- não mova callbacks de lifecycle para widgets nem bloqueie a thread GTK;
+- não marque a UI como 1:1 até comparar com o QML original e validar estados/interações reais.
+
+Antes de alterar, confira `git status` e preserve mudanças do backend. Se precisar de novos métodos ou eventos, solicite ao backend e documente o contrato em `docs/APP_API_CONTRACT.md` e `docs/ARCHITECTURE.md`.

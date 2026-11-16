@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada, observer GDK4 opcional para hotplug/geometry e `ApplicationRuntime` RAII. Ainda pendem integração do runtime ao `GtkApplication` real, protótipo GTK layer-shell, interface visual e validação ampla de runtime/paridade. Nenhuma funcionalidade marcada como VERIFIED.
+**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada, observer GDK4 opcional para hotplug/geometry e `ApplicationRuntime` RAII. Bootstrap GTK4 mínimo e callbacks reais de lifecycle já existem; ainda pendem protótipo GTK layer-shell, interface visual 1:1 e validação ampla de runtime/paridade. Nenhuma funcionalidade marcada como VERIFIED.
 
 ## Fase 0 — Preparação
 
@@ -95,6 +95,9 @@
 - [x] `ApplicationRuntime` como dono do backend por vida útil: inicia sessão + observer, expõe eventos e encerra observer antes dos workers; integração ao `GtkApplication::activate/shutdown` permanece pendente até existir o app.
 - [x] Adapter de sessão Niri (event stream + reducer + actions). Abstração genérica de compositor permanece pendente.
 - [x] Adapter de outputs Niri com refresh inicial, WorkspacesChanged e refresh solicitado pela UI/GDK; teste físico de hotplug e geometria em multi-monitor permanece pendente.
+- [x] Implementar o bootstrap GTK4 mínimo: binário, `GtkApplication`, lifecycle real, janela de teste e comando CLI de desenvolvimento; `cargo check` passou.
+- [ ] Completar build/link do executável e validar a primeira abertura no Niri; a compilação foi interrompida ao atingir temperatura de CPU acima do limite operacional de 90 °C.
+- [x] CLI de desenvolvimento com `run`, `help`, `version`, `stop` e `restart`; `ipc` permanece pendente e nunca faz fallback para `qs`. Instalador usa `~/.local/bin/velatura-native`, preservando o comando legado.
 - [ ] Protótipo GTK layer-shell isolado.
 
 ## Fase 4 — Portabilidade
