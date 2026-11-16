@@ -1,0 +1,18 @@
+{
+  "available": true,
+  "enabled": true,
+  "discovering": true,
+  "all_devices": [
+    {"address":"00:00:00:00:00:01","name":"Example Headphones","device_name":"Example Headphones","icon":"audio-headphones","paired":true,"connected":true,"pairing":false}
+  ],
+  "connected_devices": [
+    {"address":"00:00:00:00:00:01","name":"Example Headphones","device_name":"Example Headphones","icon":"audio-headphones","paired":true,"connected":true,"pairing":false}
+  ],
+  "devices": [
+    {"address":"00:00:00:00:00:01","name":"Example Headphones","device_name":"Example Headphones","icon":"audio-headphones","paired":true,"connected":true,"pairing":false}
+  ],
+  "unnamed_devices": [],
+  "unnamed_count": 0,
+  "summary": "Example Headphones",
+  "icon": "󰂱"
+}

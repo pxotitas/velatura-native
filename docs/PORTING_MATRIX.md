@@ -6,7 +6,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 
 | Área | Referência primária | Estado | Critério mínimo |
 |---|---|---|---|
-| API contracts — Compositor/Monitor/Idle/Session/Lock/Polkit/Font/Emoji/Machine/Version/Sunset/Applications | APP_API_CONTRACT.md, APP_API_MATRIX.md, APP_API_REVIEW.md | IN PROGRESS | dois grupos especificados estaticamente com consumidores/evidências; lacunas de runtime, erros e outcomes permanecem; contratos não autorizam implementação 1:1 integral |
+| API contracts — Compositor/Monitor/Idle/Session/Lock/Polkit/Font/Emoji/Machine/Version/Sunset/Applications/Niri/Settings/Audio/Network/Bluetooth/Battery/Brightness | APP_API_CONTRACT.md, APP_API_MATRIX.md, APP_API_REVIEW.md | IN PROGRESS | três grupos especificados estaticamente com consumidores/evidências; lacunas reais de persistência, provider handles, errors e runtime permanecem; contratos não autorizam implementação 1:1 integral |
 | Entry point / lifecycle | shell.qml | AUDITED | startup/shutdown, estado e recuperação |
 | Multi-monitor | shell.qml, services/MonitorService.qml | AUDITED | hotplug, outputs e ilha live |
 | Shell surface composition | shell.qml | AUDITED | variants por output, handover live, wiring de Settings/Polkit/Lock/Capture/IPC |

@@ -1,0 +1,4 @@
+[
+  {"ssid":"Synthetic Wi-Fi","signal":73,"secure":true,"active":true,"known":true},
+  {"ssid":"Guest Network","signal":31,"secure":false,"active":false,"known":false}
+]

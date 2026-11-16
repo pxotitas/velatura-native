@@ -91,10 +91,11 @@ pub struct CompositorSnapshot {
     pub kind: CompositorKind,
     pub connected: bool,
     pub version: Option<String>,
-    pub focused_output: Option<OutputId>,
+    pub focused_output: String,
     pub focused_window: Option<WindowSnapshot>,
     pub workspaces: Vec<WorkspaceSnapshot>,
     pub windows: Vec<WindowSnapshot>,
+    pub niri: Option<NiriServiceState>,
 }
 
 pub struct OutputSnapshot {
@@ -132,7 +133,7 @@ pub enum SettingValue {
 
 Multi-monitor: outputs virtuais (incluindo Virtual-1) são outputs normais; primary efetivo atual é focused output com fallback para primeiro output ativo, não um primary independente do Niri. O handover é estado explícito: enquanto painel está expandido, a ilha live não troca de output; ao fechar, assenta no output desejado. O contrato de lifecycle/ordenação dessa transição e a regra quando não há output elegível precisam ser derivados da fonte ativa antes da implementação. Backend expõe qual output é live; frontend desenha barra/superfícies por output.
 
-DomainSnapshot é struct tipada, não JSON arbitrário. Shapes draft de CompositorService, Monitor, Idle, Session, Lock e Polkit estão na seção 12.1; Font, Emoji, Machine, Version, Sunset/NightLight e Applications na seção 12.2. Outros domínios e lifecycle genérico ainda não estão fechados. Cada domínio deve declarar estado vazio, não inicializado, indisponível, degradado e erro sem confundir ausência com zero. `Option` isoladamente não distingue esses estados.
+DomainSnapshot é struct tipada, não JSON arbitrário. Contratos draft documentais para os grupos Compositor/Monitor/Idle/Session/Lock/Polkit, Font/Emoji/Machine/Version/Sunset/Applications e Niri/Settings/Audio/Network/Bluetooth/Battery/Brightness estão nas seções 12.1–12.3. Outros serviços e lifecycle genérico ainda não estão fechados. Cada domínio deve declarar estado vazio, não inicializado, indisponível, degradado e erro sem confundir ausência com zero. `Option` isoladamente não distingue esses estados.
 
 ## 5. Eventos
 
@@ -156,7 +157,7 @@ pub enum AppEventKind {
 }
 ~~~
 
-DomainEvent usa enum por domínio (AudioChanged, NetworkChanged, BluetoothChanged, BatteryChanged, BrightnessChanged, NotificationReceived/Dismissed, MediaChanged, PrivacyChanged, ClipboardChanged, CaptureChanged, RecorderChanged, AccountChanged, ProfileChanged, CalendarChanged, ControlsChanged, PickerChanged, CameraChanged, FaceChanged, StatsChanged, CavaChanged, NotesChanged, TasksChanged, TimerChanged, VmChanged, PackagesChanged, UpdatesChanged, UsageChanged, WeatherChanged, MarketsChanged, GithubChanged, ScreenTimeChanged, ServersChanged, ThemeChanged, WallpaperChanged, GamesChanged, PetChanged, BarLayoutChanged, LauncherChanged, ApplicationsChanged, DesktopChanged, DockChanged, DeckChanged, WorkspacesChanged, CompositorServiceChanged, MonitorChanged, IdleChanged, SessionChanged, LockChanged, PolkitChanged, FontChanged, EmojiChanged, MachineChanged, VersionChanged, SunsetChanged). A existência e granularidade desses eventos novos é proposta para o contrato Rust, derivada de propriedades/sinais observados, não evento literal do QML. Eventos de janela/workspace/output preservam IDs Niri e ordem original. Evento de valor idêntico não deve ser emitido.
+DomainEvent usa enum por domínio (AudioChanged, NetworkChanged, BluetoothChanged, BatteryChanged, BrightnessChanged, NotificationReceived/Dismissed, MediaChanged, PrivacyChanged, ClipboardChanged, CaptureChanged, RecorderChanged, AccountChanged, ProfileChanged, CalendarChanged, ControlsChanged, PickerChanged, CameraChanged, FaceChanged, StatsChanged, CavaChanged, NotesChanged, TasksChanged, TimerChanged, VmChanged, PackagesChanged, UpdatesChanged, UsageChanged, WeatherChanged, MarketsChanged, GithubChanged, ScreenTimeChanged, ServersChanged, ThemeChanged, WallpaperChanged, GamesChanged, PetChanged, BarLayoutChanged, LauncherChanged, ApplicationsChanged, DesktopChanged, DockChanged, DeckChanged, WorkspacesChanged, NiriChanged, CompositorServiceChanged, MonitorChanged, IdleChanged, SessionChanged, LockChanged, PolkitChanged, FontChanged, EmojiChanged, MachineChanged, VersionChanged, SunsetChanged). Settings permanece `AppEventKind::SettingsChanged { revision, keys }`; não duplicar como DomainEvent. A existência e granularidade desses eventos novos é proposta para o contrato Rust, derivada de propriedades/sinais observados, não evento literal do QML. Eventos de janela/workspace/output preservam IDs Niri e ordem original. Evento de valor idêntico não deve ser emitido.
 
 ## 6. Comandos tipados
 
@@ -629,6 +630,161 @@ pub enum ApplicationsCommand { Refresh, LaunchDesktop { desktop_id: String } }
 **ApplicationsService.** Indexer inicia 300ms após criação; `refresh()` marca running e inicia sem guard concorrente. stdout vazio é ignorado; JSON válido troca catálogo; parse inválido só avisa; sem loaded/error público. `launchDesktop` vazio é no-op; id válido chama `gtk-launch` detached sem receipt. Script usa XDG_DATA_HOME/DIRS, primeira precedência de basename válida, leitura apenas de diretórios diretos; filtra Type, Hidden/NoDisplay e Name. Payload literal tem `kind="app"`, id como basename `.desktop`, `keywords` como uma string lowercase formada por `" ".join([Name, Keywords, GenericName])`, e `subtitle` como `Comment.strip() or GenericName` (cujo default `Application` só se aplica quando a chave não existe), além de icon/exec/wmclass/categories. Não rebatizar `wmclass` nem dividir keywords em tokens. Diretório ilegível gera stderr e segue. Não se presume locale resolution ou Exec parsing. Consumidores: LauncherService/LauncherPanel e DockService. Evidência: `services/ApplicationsService.qml`, `scripts/applications.py`, `services/LauncherService.qml`, `bar/island/LauncherPanel.qml`, `services/DockService.qml`.
 
 **Limites desta especificação.** Os adapters não publicam várias causas de falha, exit status ou receipts terminais; não sintetizar sucesso/falha para a UI. Emoji persistence malformed/missing recovery e versão dos dados Unicode dependem do JsonAdapter/dados instalados; desempate da ordenação de aplicações segue parser/origem; `Version.ChangeFiles` não confirma efeito e fetch altera refs; Sunset não distingue indisponibilidade de falha de processo; Applications admite refresh sobreposto. Fixtures sintéticas limitadas a payloads de script com schema confirmado: fonts, machine e applications (`docs/fixtures/{fonts.index,machine.report,applications.index}.json`). Não há fixtures de lifecycle/erro para esses serviços nem fixtures oficiais para Emoji, Version e Sunset, pois isso exigiria presumir estados que o original não expõe. Contratos descrevem a superfície observável, mas os limites de recuperabilidade e estado de erro são pendências reais para portabilidade 1:1.
+
+### 12.3 Contratos tipados — Niri, Settings, Audio, Network, Bluetooth, Battery e Brightness
+
+Escopo da rodada 5. A auditoria-base está em `BACKEND_AUDIT.md` e `INTEGRATION_AUDIT.md`; a matriz abaixo liga cada consumidor ao estado e comando/evento. Nomes de comandos/eventos Rust são uma representação proposta, não nomes de tipos QML. Payloads de runtime Quickshell (Pipewire, BlueZ, UPower) não são expostos: os tipos Rust abaixo são projeções dos campos que o código original lê. Não há validação runtime nesta rodada.
+
+~~~rust
+pub struct NiriServiceState {
+    pub last_error: String,
+    pub focused_workspace_id: Option<u64>, pub active_workspace_id: Option<u64>,
+    pub focused_address: String, pub clients: Vec<NiriClient>, pub occupied_ids: Vec<u32>,
+    pub occupied_workspace_ids: Vec<u64>, pub action_queue: Vec<Vec<String>>,
+    pub active_id: u32,
+    pub maximum: u32, pub span: u32,
+}
+pub struct WorkspaceSnapshot {
+    pub id: u64, pub idx: u32, pub name: Option<String>, pub output: Option<String>,
+    pub is_focused: bool, pub is_active: bool, pub is_urgent: Option<bool>,
+    pub active_window_id: Option<u64>, pub raw: JsonObject,
+}
+pub struct WindowSnapshot {
+    pub id: u64, pub workspace_id: Option<u64>, pub app_id: Option<String>,
+    pub title: Option<String>, pub is_focused: bool, pub is_urgent: Option<bool>,
+    pub layout: Option<JsonValue>, pub raw: JsonObject,
+}
+pub struct NiriClient { pub window: WindowSnapshot, pub address: String, pub class: String, pub mapped: bool, pub workspace: Option<NiriClientWorkspace> }
+pub struct NiriClientWorkspace { pub id: u32, pub name: String, pub output: String }
+pub type JsonObject = BTreeMap<String, SettingValue>;
+pub type JsonValue = SettingValue;
+pub struct NiriEvent { pub kind: String, pub data: JsonValue }
+pub enum NiriCommand {
+    RunAction { argv: Vec<String> }, RunActions { actions: Vec<Vec<String>> },
+    FocusWorkspace { index: u32 }, FocusWorkspaceOn { index: u32, output: String },
+    FocusWindow { id: u64 }, CloseWindow { id: u64 }, ToggleFloating { id: u64 },
+}
+pub struct SettingsState {
+    pub arrived: bool, pub fresh: bool, pub state_directory: String,
+    pub values: BTreeMap<String, SettingValue>, pub machine_keys: Vec<String>,
+}
+pub enum SettingsCommand {
+    Set { key: String, value: SettingValue }, ResetProfile,
+    AdoptProfile { values: JsonObject },
+    SetBarZone { side: String, items: Vec<BarLayoutInput> },
+    SetBeside { id: String, enabled: bool },
+    SetLauncherPrefix { id: String, sigil: String },
+}
+pub struct BarLayoutInput { pub id: String, pub shape: Option<String>, pub figure: Option<String>, pub when: Option<String> }
+pub struct AudioState {
+    pub ready: bool, pub sink: Option<AudioEndpoint>, pub source_ready: bool,
+    pub source: Option<AudioEndpoint>, pub volume: i32, pub muted: bool, pub icon: String,
+    pub source_volume: i32, pub source_muted: bool, pub source_icon: String,
+    pub outputs: Vec<AudioEndpoint>, pub inputs: Vec<AudioEndpoint>,
+    pub streams: Vec<AudioStream>, pub input_streams: Vec<AudioStream>,
+    pub captures: Vec<AudioStream>, pub output_prefix: String, pub card_rows: u32,
+    pub panel_width: u32, pub panel_height: u32, pub microphone_height: u32,
+}
+pub struct AudioObjectHandle { /* identidade privada do provider; nunca o objeto PipeWire */ }
+pub struct AudioEndpoint { pub handle: AudioObjectHandle, pub name: String, pub description: String, pub nickname: String, pub percent: i32, pub muted: bool }
+pub struct AudioStream { pub handle: AudioObjectHandle, pub name: String, pub icon_name: String, pub percent: i32, pub muted: bool }
+pub enum AudioCommand {
+    SetVolume { percent: i32 }, ToggleMute, SetSourceVolume { percent: i32 }, ToggleSourceMute,
+    ChooseOutput { handle: AudioObjectHandle }, ChooseInput { handle: AudioObjectHandle },
+    SetStreamVolume { handle: AudioObjectHandle, percent: i32 }, ToggleStreamMute { handle: AudioObjectHandle },
+}
+pub struct NetworkState {
+    pub devices: Vec<NetworkDeviceSnapshot>, pub wifi_enabled: bool, pub wifi_connected: bool,
+    pub wired_connected: bool, pub online: bool, pub connection_name: String,
+    pub state_line: String, pub strength: f64, pub icon: String, pub radio_on: bool,
+    pub networks: Vec<WifiNetwork>, pub scanning: bool, pub busy_ssid: String,
+    pub last_error: String, pub pending_action: String,
+}
+pub struct NetworkDeviceSnapshot { pub kind: String, pub connected: bool, pub wifi_networks: Vec<WifiLink> }
+pub struct WifiLink { pub connected: bool, pub signal_strength: Option<f64>, pub name: String }
+pub struct WifiNetwork { pub ssid: String, pub signal: i32, pub secure: bool, pub active: bool, pub known: bool }
+pub enum NetworkCommand {
+    Refresh, ToggleWifi, SetWifi { on: bool }, Scan { rescan: bool },
+    Connect { ssid: String, password: Option<SecretInput> }, Disconnect { ssid: String }, Forget { ssid: String },
+}
+pub struct NetworkConnectionFinished { pub ssid: String, pub success: bool }
+pub struct BluetoothState {
+    pub available: bool, pub enabled: bool, pub discovering: bool, pub all_devices: Vec<BluetoothDevice>,
+    pub connected_devices: Vec<BluetoothDevice>, pub devices: Vec<BluetoothDevice>,
+    pub unnamed_devices: Vec<BluetoothDevice>, pub unnamed_count: u32, pub summary: String, pub icon: String,
+}
+pub struct BluetoothDevice { pub address: String, pub name: String, pub device_name: String, pub icon: String, pub paired: bool, pub connected: bool, pub pairing: bool }
+pub enum BluetoothCommand { Toggle, SetDiscovering { on: bool }, ToggleDeviceConnection { address: String } }
+pub struct BatteryState {
+    pub available: bool, pub percent: i32, pub state_code: i32, pub charging: bool, pub full: bool,
+    pub low: bool, pub seconds_to_empty: i32, pub seconds_to_full: i32, pub estimate: String,
+    pub watts: f64, pub energy: f64, pub energy_capacity: f64, pub health_known: bool,
+    pub health: i32, pub state_word: String, pub icon: String, pub tint: BatteryTint,
+    pub level_icons: [String; 11],
+}
+pub enum BatteryTint { Dim, Good, Bad, Warn }
+pub struct BrightnessState { pub displays: Vec<BrightnessDisplay>, pub dimmable: Vec<String>, pub current: Option<String>, pub available: bool, pub percent: i32, pub icon: String, pub several: bool, pub backlight_percent: i32, pub panel_width: u32, pub panel_height: u32 }
+pub struct BrightnessDisplay { pub name: String, pub title: String, pub panel: bool, pub backlight: bool, pub available: bool, pub percent: i32, pub icon: String, pub level: i32, pub ceiling: i32, pub answering: bool }
+pub enum BrightnessCommand { SetCurrent { percent: i32 }, StepCurrent { delta: i32 }, SetDisplay { screen_name: String, percent: i32 }, StepDisplay { screen_name: String, delta: i32 }, Refresh }
+~~~
+
+#### NiriService
+
+- **Dados:** workspaces/windows começam vazios; foco IDs e referências iniciam null; `connected=false`, `lastError=""`, fila vazia. `connected` fica em `CompositorSnapshot`, os outros campos específicos em `NiriServiceState`; lista/foco/output comuns não são duplicados em DomainSnapshot. Workspace/window são objetos do Niri: o contrato mantém projeção dos campos efetivamente lidos e `raw` para campos adicionais, sem descartar dados originais. `clients` é shallow copy de cada janela com aliases `address=String(id)`, `class=app_id ?? ""`, `mapped=true`, e `workspace` com `id=idx`, `name ?? ""`, `output ?? ""`. `focusedAddress`, `occupiedIds`, `occupiedWorkspaceIds`, `activeOn`, `isOccupiedOn`, `isOccupied`, `isVisibleOn`, `windowsOn`, `clientsOn`, `activeId`, `maximum` e `span` mantêm suas distinções e fórmulas do adapter. `maximum` vem de `SettingsService.workspaceMax`; `activeId` fallback é 1, `activeWorkspaceId` fallback protocolar é 0.
+- **Eventos/lifecycle:** inicia `niri msg --json event-stream` no singleton; cada linha é JSON. Primeiro `{Ok:{Handled:null}}` marca connected e limpa erro; `{Err:...}` desconecta e guarda JSON serializado. Eventos de workspace/janela substituem ou atualizam arrays conforme o handler QML; `WindowOpenedOrChanged` emite `windowOpened` somente em novo ID; `WindowClosed` emite sempre ID; todos eventos válidos, inclusive tipos não tratados, são encaminhados por `eventReceived(kind,data)`. JSON inválido define lastError, mantém connected/estado e não emite eventReceived. Saída não-zero marca desconectado, define mensagem `Niri event stream exited (<code>)` e tenta reconectar após 3000ms; saída zero marca desconectado e **não agenda reconnect**. Não limpar estado de janelas/workspaces ao desconectar; evento válido posterior define connected=true, mas não limpa necessariamente lastError.
+- **Comandos:** `runAction`/`runActions` aceitam arrays; só arrays não vazios são enfileirados, cada arg convertido a string. Um processo `niri msg action <argv...>` roda por vez; falha só gera warning, segue fila e não devolve receipt/erro. `focusWorkspace(index)` usa output focado; `focusWorkspaceOn` quando output diferente enfileira `focus-monitor <output>` seguido de `focus-workspace <index>`; index ≤0 é no-op. Foco/fechamento/float mapeiam respectivamente `focus-window --id`, `close-window --id`, `toggle-window-floating --id`; id vazio é no-op.
+- **Consumidores:** `WorkspacesWidget`, `OverviewPanel`, `IslandRest`, `DynamicIsland`, `LauncherService/LauncherPanel`, `DockService/DockMenu`, `MonitorService`, `BrightnessService`, `CaptureService`, `RecorderService`, `SessionService`, `ScreenTimeService`, `shell.qml` e Settings Bar/Windows.
+- **Sem persistência.** Não traduzir todos os eventos Niri em eventos inventados: preservar kind/data para os não projetados e ordem do stream. Fonte: `services/NiriService.qml`, `services/MonitorService.qml`, `services/DesktopService.qml`, `Commands.qml`, componentes citados; auditoria `BACKEND_AUDIT.md` §Niri.
+
+#### SettingsService
+
+- **Estado público:** aliases do `Store`, `arrived`, `fresh`, `stateDirectory`; catálogos/constantes `launcherPrefixDefaults`, `clockFormats`, `barStyles`, `notched`, `barDefaults`, `chipShapes`, `workspaceStyles`, `chipFigures`, `besideDefaults`, `besideChoices`; funções `launcherPrefix`, `barItems`, `barZone`, `onBar`, `tidy`, `setBarZone`, `welcomeActivities`, `beside`, `setBeside`, `set`, `shapeOf`, `accepts`, `copy`, `complete`, `snapshot`, `adopt`, `reset`, `machineLayout`. Os valores persistidos são todas as propriedades declaradas por `Store` em `services/SettingsService.qml`; não são JSON livre nem somente as propriedades visualmente usadas. `machineKeys` literal: displays, lidPolicy, workspaceMode, userName, userAvatar, language, keyboard, weatherPlace, githubUser, markets, emojiTone, doNotDisturb, nightLight, nightTemperature, barHidden, desktopHidden, gameMode, cameraEnabled, cameraEffect, cameraReactions, recorderAudio, captureShape, captureKind. `profileKeys = storedKeys - machineKeys`.
+- **Store JSON: 108 chaves exatas:** `clockFormat`, `clockShowsDate`, `clockShowsSeconds`, `barHeight`, `barMargin`, `islandAttached`, `barSideMargin`, `barEverywhere`, `barHidden`, `screenCorners`, `gameMode`, `windowShadow`, `barShadow`, `dockShadow`, `widgetShadow`, `windowGlass`, `surfaceStyle`, `desktopGround`, `barSides`, `wallpaperTransition`, `wallpaperDir`, `matugenEnabled`, `greeting`, `barStyle`, `barLeft`, `barRight`, `islandSummary`, `lyrics`, `islandActivities`, `islandActivitiesSeen`, `chipShape`, `chipFigure`, `launcherResults`, `launcherOrder`, `launcherFits`, `emojiTone`, `cameraEnabled`, `cameraEffect`, `cameraReactions`, `clipboardHistory`, `clipboardKeep`, `clipboardImages`, `clipboardWipeOnLock`, `lockBlur`, `lockClock`, `lockMusic`, `lockMusicGround`, `userName`, `userAvatar`, `doNotDisturb`, `recorderAudio`, `captureShape`, `captureKind`, `notesHandwriting`, `deckOnEmpty`, `spectrumOnEmpty`, `workspaceCount`, `workspaceMax`, `workspaceMode`, `workspaceStyle`, `motionScale`, `motionCurve`, `animationPreset`, `fontFamily`, `fontMono`, `notificationTimeout`, `compositor`, `keyboard`, `displays`, `keys`, `launcherPrefixes`, `desktopWidgets`, `desktopTheme`, `desktopOpacity`, `desktopHidden`, `centreButtons`, `centreTop`, `centreColumns`, `centreRows`, `centreBlocks`, `centreToggles`, `dockEnabled`, `dockPinned`, `dockEdge`, `dockAlignment`, `dockIconSize`, `dockMagnify`, `dockOpacity`, `dockGround`, `terminalGround`, `dockRunning`, `dockEverywhere`, `dockAutohide`, `dockLauncher`, `weatherPlace`, `githubUser`, `markets`, `petStyle`, `idleLock`, `idleScreen`, `idleSuspend`, `nightLight`, `nightTemperature`, `lidPolicy`, `cursorColor`, `cursorSize`, `shakeToFind`, `language`. `islandActivitiesSeen` faz parte do arquivo e dos profileKeys, embora não tenha alias público próprio.
+- **Persistência e inicialização:** JSON `$XDG_STATE_HOME/quickshell/settings.json`, fallback `$HOME/.local/state/quickshell/settings.json`; XDG_STATE_HOME vazio também usa fallback. JsonAdapter Store mantém defaults no QML; não há `schemaVersion` no formato original. `arrived=false` até load; só FileNotFound habilita `fresh=true`, lê `00-keyboard.conf` para `keyboard` e grava defaults. `set` desconhecida ou antes de arrived é warning + no-op, writes não são enfileiradas. `onAdapterUpdated` agenda saver 0ms para coalescer alterações do turno. watchChanges recarrega mudanças externas.
+- **Versão do contrato:** `AppSnapshot.settings.schema_version`/`revision` são metadados do protocolo Rust, não propriedades nem campos do settings.json original. Não serializar um `schemaVersion` no arquivo original como se existisse; compatibilidade/migrações seguem as keys e marcadores literais acima.
+- **Migrações de leitura:** `frosted`→`glass` em surfaceStyle/desktopGround/dockGround; ground vazio herda surfaceStyle; `dockShadow` ausente no texto JSON copia barShadow; `barFullWidth:true` com `barStyle:"island"` migra para `bezel`. Essas condições e ordem precisam permanecer literais. `complete(values)` considera somente profileKeys, aceita somente shape compatível com default (default null permite null/list/map; números precisam finitos), completa ausentes com defaults; `snapshot()` contém só profileKeys; `adopt()` falha sem arrived, senão aplica perfil completo; `reset()` adota vazio e conserva machineKeys. `machineLayout()` extrai somente XkbLayout e opções `grp:*` do arquivo Xorg legado.
+- **Operações auxiliares:** `setBarZone(side, items)` chama tidy (remove splits nas pontas e adjacentes), serializa bare id quando sem override e omite campos vazios; `side=="left"` grava barLeft e qualquer outro valor escolhe barRight. `setLauncherPrefix(id,sigil)` remove override se vazio ou igual default; setter aceita valor arbitrário, mas getter usa somente string de um caractere e senão devolve default. `setBeside` altera lista e atualiza `islandActivitiesSeen`; `welcomeActivities` inclui escolhas default novas uma vez. Não deduplicar itens do bar nem materializar valores herdados.
+- **Consumidores:** todas as 14 seções de Settings e SettingsWindow/Panel; `shell.qml`, Bar/BarReserve/BarZone/BarChip, Island/DynamicIsland, WorkspacesWidget, Controls/LayoutEditor, Launcher, Dock, Desktop/Deck/Inspector, Lock, Theme, Profile, Capture/Recorder e vários services conforme referências em `UI_COMPONENT_CATALOG.md`.
+- **Pendente concreto:** QML não define chave de versão. `complete/adopt` descarta chaves que não pertencem a profileKeys; comportamento de JsonAdapter ao carregar e regravar propriedades JSON desconhecidas precisa ser confirmado na documentação/runtime do Quickshell antes de afirmar preservação/perda. O princípio geral de preservar unknown keys no contrato Rust não prova que o original o faça. Não criar migração Rust que altere esse resultado sem decisão registrada. Fonte: `services/SettingsService.qml`, auditoria `BACKEND_AUDIT.md` §Settings.
+
+#### AudioService
+
+- **Dados:** sink/source default e `ready`/`sourceReady`; volume e sourceVolume em porcentagem arredondada; muted/sourceMuted; ícones literais; outputs são sinks que não são streams com audio, ordenados primeiro não-digital e depois descrição/nome locale/numeric; streams são `AudioOutStream`; inputs são fontes `Audio/Source` sem sink/stream; inStreams `AudioInStream`; captures exige ready e exclui `stream.capture.sink=="true"`, `stream.monitor=="true"`, e `application.name=="cava"`. Não-classificados ainda podem aparecer como captures antes de propriedades chegarem? O QML filtra apenas depois `ready`, preservando essa condição.
+- **Atualização:** PipeWire reativo via `PwObjectTracker`; sem polling ou persistência própria. Default objects podem ser null/unready; ausência dá ready=false, volume 0 e muted=false. `outputPrefix` é a sequência comum de palavras, nunca considera última palavra; `outputName` remove esse prefixo e reescreve `HDMI / DisplayPort N Output` como `HDMI N`. streamName escolhe application.name→process.binary→node.name e capitaliza só o primeiro caractere; streamIcon escolhe icon-name→binary, lowercase, Theme.appIcon.
+- **Comandos:** percent clamp 0..100 e converte /100 para PipeWire; output/input selection escreve `preferredDefaultAudioSink/Source`; toggles negam valor atual; stream/source volume só se objeto/ready disponível. Não há receipt do setter nem confirmação além da propriedade reativa.
+- **Consumidores:** VolumeModule, SoundDetail, MicrophoneDetail, ModuleService, controls/BlockFace e cards, OSD (debounce/suppress), Wides/Squares, faces analogue/sticker; PRIVACY consome AudioService inputs/captures.
+- **Pendente:** contratos precisam associar handle de stream/node ao objeto reativo e expiração quando node desaparece; IDs/capabilities PipeWire devem ser definidos pelo provider, não runtime object no frontend. Fonte: `services/AudioService.qml`, `services/PrivacyService.qml`, componentes citados; `BACKEND_AUDIT.md` §Audio.
+
+#### NetworkService
+
+- **Dados:** NetworkManager reativo fornece devices, wifiDevice/wiredDevice, wifi/wired connection e `Networking.connectivity===Full` para online. `radioOn` vem de `nmcli -t -f WIFI radio all`, comparado literalmente a `enabled`. `connectionName`: Wired > nome SSID ativo > Off se rádio desligado > Not connected se há wifiDevice > Unavailable. `strength` é 0 fora do Wi-Fi conectado; signalStrength >1 divide por 100. `stateLine`: Ethernet · online/no internet, Wi-Fi · online/no internet, Wi-Fi radio off, ou Online/Nothing reaches the internet, conforme precedência original. Icons: wired 󰈁; radio off 󰤮; wifi connected 󰤨; radio on/disconnected 󰤯. `strengthIcon` thresholds >=75, >=50, >=25, else, glyphs 󰤨/󰤥/󰤢/󰤟.
+- **Listagem/eventos:** scan(rescan=false) inicia `network.py list`; true usa `rescan`, que chama `nmcli device wifi rescan` e lista logo depois sem aguardar scan completar. Sem rádio, list ainda roda e normalmente lista vazia. Radio vindo para on agenda scan após 1200ms; radio off limpa networks. stdout vazio preserva lista antiga; parse inválido warning; onExited limpa scanning. network.py retorna `[{ssid,signal,secure,active,known}]`, exclui SSID vazio, decodifica `\:` por parser terse, junta sightings por SSID (maior sinal, OR active/secure, `known` da lista de conexões wireless) e ordena active primeiro/depois sinal desc.
+- **Comandos:** Refresh relê rádio; ToggleWifi alterna estado observado; SetWifi(on) fixa estado; Scan(rescan); Connect(ssid,password default vazio), Disconnect(ssid), Forget(ssid). connectProcess é compartilhado: cada ação seta pendingAction/busySsid, limpa lastError; final calcula success por exitCode==0, libera busy, sucesso limpa erro, falha de connect sem stderr usa fallback inglês, emite connectionFinished somente para connect; depois limpa pendingAction, refresh e scan(false). stderr do helper é sanitizado em português e preservado como lastError; detalhes nmcli/password não devem vazar. Script timeouts 25s padrão, 60s connect; sem nmcli/exception retorna None e stderr. Nenhum password persiste em Settings/NetworkManager passa a deter perfil.
+- **Segurança/paridade:** original passa password como argv para network.py. Não repetir exposição em `/proc`; transportar o mesmo segredo por canal protegido sem mudar Connect/resultado observável. Desconexão e forget não emitem connectionFinished; erro de list/rescan não ganha novo estado público.
+- **Consumidores:** NetworkModule, NetworkDetail, TogglesBlock (refresh), ModuleService, Wides/Squares e faces analogue/sticker. `SystemService` também mantém um provider separado via `scripts/system.py` para o bloco de toggles; não substituir esse caminho por NetworkService implicitamente. Fonte `services/NetworkService.qml`, `scripts/network.py`, UI citada; `BACKEND_AUDIT.md` §Network e `INTEGRATION_AUDIT.md` network.py.
+
+#### BluetoothService
+
+- **Dados/reatividade:** adapter é `Bluetooth.defaultAdapter`; absent => available=false, enabled=false, discovering=false e arrays vazios; todos os `adapter.devices.values` entram em allDevices. `deviceName` define named (não `name`, que pode fallback para MAC). Lista principal inclui named OU paired OU connected OU pairing, ordenada connected primeiro, paired depois, `name.localeCompare`; unnamed é complemento, ordenado por address. Não remover pareados mesmo sem nome anunciado. summary é Unavailable/Off/No devices/nome único/N devices; icon disabled ou unavailable 󰂲, enabled+connected 󰂱, senão 󰂯. `deviceIcon` mapeia audio-headset/headphones→󰋋, audio-card→󰓃, input-mouse→󰍽, input-keyboard→󰌌, phone→󰄜, computer→󰟀, fallback→󰂯. BlueZ fornece updates reativos; pareamento persistido pertence ao BlueZ, sem settings.
+- **Comandos:** Toggle alterna `adapter.enabled`; SetDiscovering(on) atribui adapter.discovering quando adapter existe; ToggleDeviceConnection(address) nega `device.connected`. Não existe comando Pair, remoção nem PIN agent nesta UI/service; não adicioná-los por inferência. BluetoothDetail começa discovery ao completar se enabled e o desliga ao destruir; o switch chama toggle e em seguida setDiscovering(checked), mesmo que atualização de enabled ainda não tenha chegado.
+- **Consumidores:** BluetoothModule, BluetoothDetail, ModuleService, Wides/Squares e faces analogue/sticker. `SystemService` é provider paralelo para outro bloco de toggle, com polling/status próprios e `system.py`; manter essa duplicação funcional em vez de unir os estados sem evidência.
+- **Pendente:** adapter/device removido no meio da ação necessita lifecycle/reconnect equivalente no provider (**runtime**); operação de toggle tem identidade observável por `address`, não deve expor objeto BlueZ. Fontes `services/BluetoothService.qml`, `services/SystemService.qml`, `bar/island/BluetoothDetail.qml`, `BACKEND_AUDIT.md` §Bluetooth.
+
+#### BatteryService
+
+- **Dados:** `available` somente `displayDevice != null && ready && isLaptopBattery`; sem bateria expõe percent 0, state `Unknown`, bools false, tempos/watts/energia/health 0, estimate/stateWord vazios e ícone de ausência. Percent = round(fraction*100); low <=20 sem charging/full; tint thresholds <=15 bad, <=35 warn, else good; glyph table explícito 0..10. Estimativa: full→`Fully charged`; tempo <=0 retorna `Charging` quando carregando ou vazio descarregando; caso contrário `h h m min` quando horas >0 ou `m min`, sufixo `to full`/`left`. watts abs(changeRate); health somente se suportado, arredondado.
+- **Atualização:** propriedades UPower reativas/D-Bus; sem polling, comando ou persistência. State bruto é enum UPower; mapping numérico local deve ser resolvido pelo binding, UI usa `charging/full` e strings derivadas. Ordem exata de `level_icons` (percent steps 0 a 10): `󰂎`, `󰁺`, `󰁻`, `󰁼`, `󰁽`, `󰁾`, `󰁿`, `󰂀`, `󰂁`, `󰂂`, `󰁹`.
+- **Consumidores:** BatteryModule/Widget, OSD na mudança charging, ModuleService low/tint/availability, DynamicIsland, Control Center/System block, LockSurface, Wides/Squares e faces analogue/sticker.
+- **Pendente:** enum numérico UPower e tratamento de `ready`/hot-swap exigem binding/reconnect equivalente; nada de fixture com enum numérico oficial sem map confirmado. Fonte `services/BatteryService.qml`, `OsdService.qml`, consumidores; `BACKEND_AUDIT.md` §Battery.
+
+#### BrightnessService
+
+- **Dados:** uma display state por Quickshell screen; painel reconhecido por `^(eDP|LVDS|DSI)-`; title Built-in ou model/name. Primeiro `/sys/class/backlight` (ordenação ls) lido uma vez; FileView observa raw brightness; max; backlight é painel com max>0 ou output único sem DDC bus. Externos descobertos apenas se houver screen não painel com `ddcutil detect --brief`; map connector Niri name→I2C bus. display answering exige resposta `VCP 10 C level maximum`; disponível se backlight ou bus + answering. Percent de backlight round(raw/max*100), DDC level percentual do VCP. `current` = display do focused output se dimmable, senão primeiro dimmable; `several` iff >1; icon thresholds <34, <67, caso contrário. `adjusted(display)` apenas na mudança sysfs raw ou ajuste pedido (inclusive tecla no limite); leitura DDC não emite.
+- **Comandos/lifecycle:** SetCurrent(percent), StepCurrent(delta), Refresh (chama `read()` em cada display, mas somente DDC com bus lê; sysfs já watched). `setPercent` ignora unavailable, clamp 1..100, não repete valor desejado/current; `step` parte de wanted se pendente, e em limites emite adjusted sem write. Uma escrita por monitor; wanted mais recente coalesce enquanto reader/writer; DDC escala percent para ceiling VCP10, flags originais preservadas; falha write DDC não retry, relê; sem resposta tira display de dimmable. Hotplug screensChanged debounce 1500ms; sem polling contínuo. Sysfs writer `brightnessctl --quiet set N%`; falha não tem erro estruturado. DDC/screen state não é persistido.
+- **Consumidores:** BrightnessModule/Detail, Controls BlockFace, DynamicIsland sizing, OSD (usa display do sinal, debounce e suprime se painel aberto), ModuleService, Wides/Squares e faces analogue/sticker; keys do sistema atualizadas no Surface externo.
+- **Pendente:** identificação de display/monitor stable ID para handle de comando e publicação de falhas sysfs sem transformar estados não expostos em sucesso; DDC/sysfs permission é dependência do provider, não autoelevação. Fontes `services/BrightnessService.qml`, `OsdService.qml`, UI citada; `BACKEND_AUDIT.md` §Brightness.
+
+**Fixtures desta rodada:** `niri.events.mock.jsonl` (handshake/eventos sintéticos com campos consumidos pelo parser), `settings.defaults.json` (108 defaults extraídos dos inicializadores QML) e `settings.partial.json` (perfil parcial para `complete()`), `audio.snapshot.json`, `network.list.json` (shape exato do helper), `bluetooth.snapshot.json`, `brightness.snapshot.json`. São sintéticas e não substituem prova runtime; não incluem senha, endereço real, caminho do perfil do usuário ou valores lidos da máquina. Sem fixture de Battery: o schema carrega o enum numérico UPower, cujo mapeamento instalado não está confirmado.
 
 ## 13. Extensão derivada da auditoria de superfícies UI (15/11/2026)
 

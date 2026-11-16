@@ -1,0 +1,22 @@
+{
+  "ready": false,
+  "sink": null,
+  "source_ready": false,
+  "source": null,
+  "volume": 0,
+  "muted": false,
+  "icon": "󰝟",
+  "source_volume": 0,
+  "source_muted": false,
+  "source_icon": "󰍬",
+  "outputs": [],
+  "inputs": [],
+  "streams": [],
+  "input_streams": [],
+  "captures": [],
+  "output_prefix": "",
+  "card_rows": 2,
+  "panel_width": 440,
+  "panel_height": 200,
+  "microphone_height": 200
+}

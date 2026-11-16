@@ -1,0 +1,14 @@
+{
+  "displays": [
+    {"name":"DP-1","title":"Example Monitor","panel":false,"backlight":false,"available":true,"percent":65,"icon":"󰃟","level":65,"ceiling":100,"answering":true}
+  ],
+  "dimmable": ["DP-1"],
+  "current": "DP-1",
+  "available": true,
+  "percent": 65,
+  "icon": "󰃟",
+  "several": false,
+  "backlight_percent": 0,
+  "panel_width": 440,
+  "panel_height": 120
+}

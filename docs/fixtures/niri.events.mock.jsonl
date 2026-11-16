@@ -1,0 +1,4 @@
+{"Ok":{"Handled":null}}
+{"WorkspacesChanged":{"workspaces":[{"id":1,"idx":1,"name":"1","output":"eDP-1","is_focused":true,"is_active":true,"is_urgent":false,"active_window_id":42}]}}
+{"WindowOpenedOrChanged":{"window":{"id":42,"workspace_id":1,"app_id":"example.app","title":"Synthetic window","is_focused":true,"is_urgent":false,"layout":{"pos_in_scrolling_layout":0}}}}
+{"WindowClosed":{"id":42}}

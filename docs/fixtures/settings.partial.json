@@ -1,0 +1,10 @@
+{
+  "barStyle": "island",
+  "barLeft": ["workspaces"],
+  "barRight": [
+    "tray",
+    {"id": "volume", "shape": "ring"}
+  ],
+  "workspaceMode": "shared",
+  "idleLock": 0
+}
