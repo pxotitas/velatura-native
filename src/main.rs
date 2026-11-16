@@ -151,6 +151,13 @@ fn run_application() -> ExitCode {
             Ok(())
         };
 
+        if let Some(display) = gtk4::gdk::Display::default() {
+            let _provider = velatura_core::ui::theme::install(
+                &display,
+                &velatura_core::ui::theme::VisualTheme::default(),
+            );
+        }
+
         let window = match startup {
             Ok(()) => {
                 let runtime_ref = runtime_for_activate.borrow();

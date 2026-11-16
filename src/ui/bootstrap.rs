@@ -35,6 +35,7 @@ pub fn build_bootstrap_window_with_snapshot(
         .build();
 
     let root = GtkBox::new(Orientation::Vertical, 14);
+    root.add_css_class("velatura-root");
     root.set_margin_top(24);
     root.set_margin_bottom(24);
     root.set_margin_start(24);
@@ -108,6 +109,7 @@ pub fn build_error_window(app: &Application, error: &str) -> ApplicationWindow {
         .build();
 
     let root = GtkBox::new(Orientation::Vertical, 12);
+    root.add_css_class("velatura-root");
     root.set_margin_top(24);
     root.set_margin_bottom(24);
     root.set_margin_start(24);

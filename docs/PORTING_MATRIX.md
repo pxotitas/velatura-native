@@ -7,6 +7,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Área | Referência primária | Estado | Critério mínimo |
 |---|---|---|---|
 | API contracts — Compositor/Monitor/Idle/Session/Lock/Polkit/Font/Emoji/Machine/Version/Sunset/Applications/Niri/Settings/Audio/Network/Bluetooth/Battery/Brightness | APP_API_CONTRACT.md, APP_API_MATRIX.md, APP_API_REVIEW.md | IN PROGRESS | três grupos especificados estaticamente com consumidores/evidências; lacunas reais de persistência, provider handles, errors e runtime permanecem; contratos não autorizam implementação 1:1 integral |
+| Visual token foundation | Theme.qml, Palettes.qml, Motion.qml, AppearanceSection.qml, SettingsService.qml | IN PROGRESS | tokens classic/default e catálogo de paletas centralizados em `src/ui/theme.rs`; settings persistidos, paleta adaptativa, glass/liquid e comparação visual permanecem pendentes; ver `VISUAL_THEME_AUDIT.md` |
 | Entry point / lifecycle | shell.qml | AUDITED | startup/shutdown, estado e recuperação |
 | Multi-monitor | shell.qml, services/MonitorService.qml | AUDITED | hotplug, outputs e ilha live |
 | Shell surface composition | shell.qml | AUDITED | variants por output, handover live, wiring de Settings/Polkit/Lock/Capture/IPC |

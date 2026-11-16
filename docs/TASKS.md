@@ -97,6 +97,8 @@
 - [x] Adapter de outputs Niri com refresh inicial, WorkspacesChanged e refresh solicitado pela UI/GDK; teste físico de hotplug e geometria em multi-monitor permanece pendente.
 - [x] Implementar o bootstrap GTK4 mínimo: binário, `GtkApplication`, lifecycle real, janela de teste e comando CLI de desenvolvimento; `cargo check` passou.
 - [ ] Completar build/link do executável e validar a primeira abertura no Niri; a compilação foi interrompida ao atingir temperatura de CPU acima do limite operacional de 90 °C.
+- [x] Criar primeira fundação visual GTK compartilhada a partir dos tokens classic, métricas, fontes e paletas auditadas; provider aplicado somente ao bootstrap temporário.
+- [ ] Conectar tokens a SettingsSnapshot/ThemeService nativos e implementar seleção/persistência sem duplicar backend; bloqueios em VISUAL_THEME_AUDIT.md.
 - [x] CLI de desenvolvimento com `run`, `help`, `version`, `stop` e `restart`; `ipc` permanece pendente e nunca faz fallback para `qs`. Instalador usa `~/.local/bin/velatura-native`, preservando o comando legado.
 - [ ] Protótipo GTK layer-shell isolado.
 - [x] Expor snapshot Niri/output atômico e revisionado por `NiriSession`/`ApplicationRuntime`; estado inicial vazio e canal de eventos de consumidor único.

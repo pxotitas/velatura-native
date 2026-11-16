@@ -5,3 +5,4 @@
 
 pub mod bootstrap;
 pub mod gtk_event_bridge;
+pub mod theme;
