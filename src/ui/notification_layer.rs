@@ -7,11 +7,13 @@
 use gtk4::prelude::*;
 use gtk4::pango;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use super::capsule::Capsule;
 use super::motion::{Curve, Tween};
 use super::palette;
 use super::tokens::{self, Rgba};
+use crate::niri_session::NiriSession;
 use crate::services::notifications::{NotificationService, Toast, Urgency};
 
 const PICTURE: i32 = 48;
@@ -26,13 +28,14 @@ const INDICATOR_BAD: Rgba = Rgba::hex(0xff, 0x45, 0x3a);
 pub struct NotificationLayer {
     pub widget: gtk4::Box,
     service: Rc<NotificationService>,
+    session: Arc<NiriSession>,
 }
 
 impl NotificationLayer {
-    pub fn new(service: Rc<NotificationService>) -> Self {
+    pub fn new(service: Rc<NotificationService>, session: Arc<NiriSession>) -> Self {
         let widget = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         widget.set_valign(gtk4::Align::Start);
-        Self { widget, service }
+        Self { widget, service, session }
     }
 
     pub fn set_toast(&self, toast: Option<&Toast>) {
@@ -69,13 +72,22 @@ impl NotificationLayer {
         }
 
         let service = Rc::clone(&self.service);
+        let session = Arc::clone(&self.session);
         let default = toast.default_action().map(|(key, _)| key.clone());
-        let id = toast.id;
+        let (id, app) = (toast.id, toast.app_name.clone());
         let click = gtk4::GestureClick::new();
         click.set_button(0);
-        click.connect_released(move |gesture, _, _, _| match (gesture.current_button(), &default) {
-            (1, Some(key)) => service.invoke_action(id, key),
-            _ => service.close(),
+        click.connect_released(move |gesture, _, _, _| {
+            if gesture.current_button() != 1 {
+                service.close();
+                return;
+            }
+            // A click anywhere but a button goes to the application.
+            Self::focus_app(&session, &app);
+            match &default {
+                Some(key) => service.invoke_action(id, key),
+                None => service.dismiss(),
+            }
         });
         row.add_controller(click);
         row.set_cursor_from_name(Some("pointer"));
@@ -83,6 +95,25 @@ impl NotificationLayer {
 
         if !inline {
             self.widget.append(&self.stacked(toast.id, &buttons));
+        }
+    }
+
+    /// Focuses the application's window: the one whose app id is the
+    /// notification's app name (notifications carry no window).
+    fn focus_app(session: &NiriSession, app: &str) {
+        let wanted = app.trim().to_lowercase();
+        if wanted.is_empty() {
+            return;
+        }
+        let windows = session.snapshot().niri.windows;
+        let found = windows.iter().find(|window| {
+            window["app_id"].as_str().is_some_and(|id| {
+                let id = id.to_lowercase();
+                id == wanted || id.rsplit('.').next() == Some(wanted.as_str())
+            })
+        });
+        if let Some(id) = found.and_then(|window| window["id"].as_i64()) {
+            let _ = session.dispatch(["focus-window".to_string(), "--id".to_string(), id.to_string()]);
         }
     }
 
@@ -120,24 +151,21 @@ impl NotificationLayer {
         face
     }
 
-    fn title_row(toast: &Toast, show_meta: bool) -> gtk4::Overlay {
-        let overlay = gtk4::Overlay::new();
+    fn title_row(toast: &Toast, show_meta: bool) -> gtk4::Box {
+        let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
         let title = gtk4::Label::new(Some(&toast.summary));
         title.add_css_class("toast-title");
         title.set_xalign(0.0);
+        title.set_hexpand(true);
         title.set_ellipsize(pango::EllipsizeMode::End);
-        overlay.set_child(Some(&title));
+        row.append(&title);
         if show_meta {
             let parts: Vec<&str> = [toast.app_name.as_str(), "now"].into_iter().filter(|p| !p.is_empty()).collect();
             let meta = gtk4::Label::new(Some(&parts.join("  ·  ")));
             meta.add_css_class("toast-meta");
-            meta.set_halign(gtk4::Align::End);
-            meta.set_valign(gtk4::Align::Baseline);
-            let (_, natural, _, _) = meta.measure(gtk4::Orientation::Horizontal, -1);
-            title.set_margin_end(natural + 10);
-            overlay.add_overlay(&meta);
+            row.append(&meta);
         }
-        overlay
+        row
     }
 
     /// Applications send Pango markup; invalid markup is shown as plain text.

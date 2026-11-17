@@ -9,6 +9,7 @@
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
+use std::sync::Arc;
 
 use super::capsule::Capsule;
 use super::clock;
@@ -16,6 +17,7 @@ use super::motion::{Curve, Tween};
 use super::notification_layer::NotificationLayer;
 use super::settings::Settings;
 use super::tokens;
+use crate::niri_session::NiriSession;
 use crate::services::island_state::{IslandState, Layer, World};
 use crate::services::notifications::{NotificationService, Toast, Urgency};
 
@@ -41,7 +43,12 @@ struct LayerSize {
 }
 
 impl Island {
-    pub fn new(settings: Rc<Settings>, active: bool, service: Rc<NotificationService>) -> Rc<Self> {
+    pub fn new(
+        settings: Rc<Settings>,
+        active: bool,
+        service: Rc<NotificationService>,
+        session: Arc<NiriSession>,
+    ) -> Rc<Self> {
         let capsule = Capsule::new();
         let notch_pad = Self::notch_pad_of(&settings);
         let rest = LayerSize {
@@ -53,7 +60,7 @@ impl Island {
         stack.set_transition_type(gtk4::StackTransitionType::Crossfade);
         stack.set_transition_duration((tokens::DURATION_FAST * settings.motion()) as u32);
         stack.add_named(&clock::build(&settings), Some("modules"));
-        let notification = NotificationLayer::new(service);
+        let notification = NotificationLayer::new(service, session);
         stack.add_named(&notification.widget, Some("notification"));
 
         let island = Rc::new_cyclic(|weak: &Weak<Island>| {

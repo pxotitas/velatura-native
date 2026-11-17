@@ -37,7 +37,7 @@ impl Bar {
         let stage = gtk4::Fixed::new();
         window.set_child(Some(&stage));
 
-        let island = Island::new(Rc::clone(&settings), true, notifications);
+        let island = Island::new(Rc::clone(&settings), true, notifications, Arc::clone(&session));
         let fillets = [Fillet::new(true), Fillet::new(false)];
         stage.put(&island.capsule, 0.0, 0.0);
         for fillet in &fillets {
