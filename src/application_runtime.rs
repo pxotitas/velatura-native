@@ -26,7 +26,7 @@ impl std::error::Error for ApplicationRuntimeError {}
 
 /// Owns the Niri backend and GDK observer for one application lifetime.
 pub struct ApplicationRuntime {
-    session: Option<NiriSession>,
+    session: Option<std::sync::Arc<NiriSession>>,
     monitor_observer: Option<GdkMonitorObserver>,
 }
 
@@ -38,7 +38,7 @@ impl ApplicationRuntime {
 
     /// Injectable executable for integration tests and custom installations.
     pub fn start_with_program(program: impl Into<String>) -> Result<Self, ApplicationRuntimeError> {
-        let session = NiriSession::with_program(program);
+        let session = std::sync::Arc::new(NiriSession::with_program(program));
         let monitor_observer = GdkMonitorObserver::attach_default(&session)
             .map_err(ApplicationRuntimeError::MonitorObserver)?;
 
@@ -49,10 +49,11 @@ impl ApplicationRuntime {
     }
 
     /// Access snapshots, signals, diagnostics and action results for the UI.
-    pub fn session(&self) -> &NiriSession {
+    pub fn session(&self) -> std::sync::Arc<NiriSession> {
         self.session
             .as_ref()
             .expect("application runtime is shut down")
+            .clone()
     }
 
     /// Number of monitors currently exposed by GDK.
@@ -84,14 +85,14 @@ impl ApplicationRuntime {
 
     /// Transfer the session's single event consumer to the presentation bridge.
     pub fn take_events(&mut self) -> Option<Receiver<NiriSessionEvent>> {
-        self.session.as_mut()?.take_events()
+        self.session.as_ref()?.take_events()
     }
 
     /// Disconnect UI-thread GDK observers before stopping backend workers.
     /// Safe to call more than once.
     pub fn shutdown(&mut self) {
         self.monitor_observer.take();
-        if let Some(mut session) = self.session.take() {
+        if let Some(session) = self.session.take() {
             session.stop();
         }
     }

@@ -7,15 +7,18 @@ license = "Apache-2.0"
 description = "Native backend core for the Velatura desktop shell"
 
 [dependencies]
-gdk4 = { version = "0.10.3", optional = true }
-gtk4 = { version = "0.10.3", optional = true }
-gtk4-sys = { version = "0.10.3", optional = true }
-serde = "1"
+gdk4 = { version = "0.11", optional = true }
+gtk4 = { version = "0.11", features = ["gnome_46"], optional = true }
+gtk4-sys = { version = "0.11", optional = true }
+gtk4-layer-shell = { version = "0.8", optional = true }
+zbus = { version = "5", features = ["blocking-api"], optional = true }
+async-channel = { version = "2", optional = true }
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [features]
 gdk4-observer = ["dep:gdk4", "dep:gtk4-sys"]
-gtk-app = ["gdk4-observer", "dep:gtk4"]
+gtk-app = ["gdk4-observer", "dep:gtk4", "dep:gtk4-layer-shell", "dep:zbus", "dep:async-channel"]
 
 [[bin]]
 name = "velatura"

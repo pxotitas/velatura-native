@@ -13,7 +13,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Shell surface composition | shell.qml | AUDITED | variants por output, handover live, wiring de Settings/Polkit/Lock/Capture/IPC |
 | Bar reserve surface | bar/BarReserve.qml | AUDITED | exclusive zone estável, zen e ausência de input |
 | Bar root + modules | bar/Bar.qml, bar/BarReserve.qml, bar/modules/*, IslandRest/Summary, OSD/Notification layers | AUDITED | quatro estilos, masks, 22 módulos, activity/glance, workspaces e tray; runtime/screenshots pendentes |
-| Dynamic Island host + panels | bar/widgets/DynamicIsland.qml, bar/island/* | AUDITED | 26 host panel IDs (appearance/palette share component) + detail routes, priority, sizing, hover/dwell, keyboard focus, loading/empty/error and action flows; runtime/screenshots pending |
+| Dynamic Island host + panels | bar/widgets/DynamicIsland.qml, bar/island/* | AUDITED | 26 host panel IDs (appearance/palette share component) + detail routes, priority, sizing, hover/dwell, keyboard focus, loading/empty/error and action flows. Primeira implementação nativa (src/ui) reprovada na validação visual e arquivada em glm-made-things/ (D-011); re-port a partir do QML original pendente |
 | Island state arbitration | bar/island/IslandState.qml | AUDITED | prioridade panel/notification/OSD/summary/modules, timeout, handover e dismiss |
 
 

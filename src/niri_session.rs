@@ -7,6 +7,7 @@ use crate::niri::{NiriLineResult, NiriSignal, NiriState};
 use crate::niri_actions::{NiriActionQueue, NiriActionResult};
 use crate::niri_outputs::{NiriOutput, NiriOutputEvent, NiriOutputService};
 use crate::niri_process::{NiriEventStream, NiriProcessEvent};
+use std::sync::Mutex;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
@@ -43,10 +44,10 @@ enum SessionCommand {
 
 /// A single owned Niri runtime. Drop requests shutdown and joins its worker.
 pub struct NiriSession {
-    commands: Option<Sender<SessionCommand>>,
-    events: Option<Receiver<NiriSessionEvent>>,
+    commands: Mutex<Option<Sender<SessionCommand>>>,
+    events: Mutex<Option<Receiver<NiriSessionEvent>>>,
     snapshot: Arc<RwLock<NiriSessionSnapshot>>,
-    worker: Option<JoinHandle<()>>,
+    worker: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl NiriSession {
@@ -67,10 +68,10 @@ impl NiriSession {
             .spawn(move || run_session(program, command_rx, event_tx, snapshot_for_worker))
             .expect("failed to start Niri session worker");
         Self {
-            commands: Some(command_tx),
-            events: Some(event_rx),
+            commands: Mutex::new(Some(command_tx)),
+            events: Mutex::new(Some(event_rx)),
             snapshot,
-            worker: Some(worker),
+            worker: Mutex::new(Some(worker)),
         }
     }
 
@@ -97,6 +98,8 @@ impl NiriSession {
         NiriRefreshHandle {
             commands: self
                 .commands
+                .lock()
+                .expect("Niri command lock poisoned")
                 .as_ref()
                 .expect("Niri session is stopped")
                 .clone(),
@@ -105,21 +108,21 @@ impl NiriSession {
 
     /// Receive the next state, diagnostic, process or action event.
     pub fn recv(&self) -> Result<NiriSessionEvent, mpsc::RecvError> {
-        match &self.events {
+        match &*self.events.lock().expect("Niri event lock poisoned") {
             Some(events) => events.recv(),
             None => Err(mpsc::RecvError),
         }
     }
 
     pub fn recv_timeout(&self, timeout: Duration) -> Result<NiriSessionEvent, RecvTimeoutError> {
-        match &self.events {
+        match &*self.events.lock().expect("Niri event lock poisoned") {
             Some(events) => events.recv_timeout(timeout),
             None => Err(RecvTimeoutError::Disconnected),
         }
     }
 
     pub fn try_recv(&self) -> Result<NiriSessionEvent, mpsc::TryRecvError> {
-        match &self.events {
+        match &*self.events.lock().expect("Niri event lock poisoned") {
             Some(events) => events.try_recv(),
             None => Err(mpsc::TryRecvError::Disconnected),
         }
@@ -135,23 +138,36 @@ impl NiriSession {
 
     /// Transfer the single event receiver to an adapter. `recv*` is unavailable
     /// afterwards; the session remains the owner of the workers and commands.
-    pub fn take_events(&mut self) -> Option<Receiver<NiriSessionEvent>> {
-        self.events.take()
+    /// Interior-mutated so the session can be shared as `Arc<NiriSession>`.
+    pub fn take_events(&self) -> Option<Receiver<NiriSessionEvent>> {
+        self.events.lock().expect("Niri event lock poisoned").take()
     }
 
     fn send(&self, command: SessionCommand) -> Result<(), mpsc::SendError<()>> {
         self.commands
+            .lock()
+            .expect("Niri command lock poisoned")
             .as_ref()
             .expect("Niri session is stopped")
             .send(command)
             .map_err(|_| mpsc::SendError(()))
     }
 
-    pub fn stop(&mut self) {
-        if let Some(commands) = self.commands.take() {
+    pub fn stop(&self) {
+        if let Some(commands) = self
+            .commands
+            .lock()
+            .expect("Niri command lock poisoned")
+            .take()
+        {
             let _ = commands.send(SessionCommand::Stop);
         }
-        if let Some(worker) = self.worker.take() {
+        if let Some(worker) = self
+            .worker
+            .lock()
+            .expect("Niri worker lock poisoned")
+            .take()
+        {
             let _ = worker.join();
         }
     }
@@ -414,7 +430,7 @@ exit 2
     #[test]
     fn explicit_stop_joins_the_session_worker() {
         let fake = FakeNiri::new();
-        let mut session = NiriSession::with_program(fake.0.to_string_lossy());
+        let session = NiriSession::with_program(fake.0.to_string_lossy());
         let started = Instant::now();
         session.stop();
         assert!(started.elapsed() < Duration::from_secs(2));

@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada, snapshot cacheado/revisionado, bridge GTK sem polling, matching GDK↔Niri e `ApplicationRuntime` RAII. Ainda pendem protótipo GTK layer-shell, interface visual 1:1 e validação física ampla de runtime/paridade. Nenhuma funcionalidade marcada como VERIFIED.
+**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada, snapshot cacheado/revisionado, bridge GTK sem polling, matching GDK↔Niri e `ApplicationRuntime` RAII. A primeira fatia de UI (barra/island/launcher) foi **arquivada em glm-made-things/** por decisão do usuário (paridade visual insuficiente, D-011); o re-port a partir do QML original ainda não começou. 53+1 testes verdes. Nenhuma funcionalidade marcada como VERIFIED.
 
 ## Fase 0 — Preparação
 
@@ -112,8 +112,8 @@
 ## Fase 4 — Portabilidade
 
 - [ ] Barra e módulos.
-- [ ] Dynamic Island e painéis.
-- [ ] Control center e launcher.
+- [ ] Dynamic Island e painéis. (primeira implementação arquivada em glm-made-things/ por paridade visual insuficiente — D-011; re-port a partir de Bar.qml/IslandRest/BarZone/WorkspacesWidget pendente)
+- [ ] Control center e launcher. (launcher arquivado junto com a UI — glm-made-things/launcher.rs; re-port pendente)
 - [ ] Serviços de sistema essenciais.
 - [ ] Settings.
 - [ ] Dock.
