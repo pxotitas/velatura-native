@@ -1,101 +1,137 @@
 # Velatura Native
 
-Reconstrução nativa do Velatura para Linux, preservando identidade visual, comportamento e funcionalidades do shell original.
+Portabilidade nativa do [Velatura](https://github.com/pxotitas/velatura) para Linux, preservando sua identidade visual, seus comportamentos e seu conjunto de funcionalidades.
 
-**Estado:** backend Niri implementado: reducer, supervisor/reconnect, fila de actions, outputs, sessão integrada, observer GDK4 e `ApplicationRuntime`. Bootstrap mínimo GTK4/`GtkApplication` disponível com lifecycle real e superfície temporária de teste; UI final, layer-shell e validação visual 1:1 continuam pendentes.
-**Fonte de referência:** /home/px/.config/quickshell (instalação original; manter intacta).
+**Estado atual:** a fundação GTK4 + Rust já está integrada ao Niri e a primeira implementação real do shell está em andamento. Já existem superfícies layer-shell por monitor, reserva independente da área superior, seleção da ilha ativa conforme o output focado, cápsula central com relógio e morphing, indicadores de workspaces e camada de notificações com ações. A ilha normal (estado de repouso) está sendo finalizada; ainda faltam atividades/módulos no repouso, as demais camadas e painéis da ilha, a integração funcional de vários módulos da barra e as outras superfícies do shell. O projeto continua em desenvolvimento e ainda não deve substituir a instalação original.
+
+**Fonte funcional e visual:** [pxotitas/velatura — implementação original em Quickshell](https://github.com/pxotitas/velatura/tree/main/home/.config/quickshell). O repositório original é a referência; consulte os arquivos-fonte diretamente pelo GitHub. Nunca edite a fonte original durante a portabilidade.
 
 ## Objetivo
 
-Portar o Velatura de Quickshell/QML para uma aplicação Linux nativa, preferencialmente Rust + GTK4, sem Quickshell, QML, Electron ou WebView em tempo de execução.
+Reimplementar o Velatura como uma aplicação Linux nativa, principalmente em Rust + GTK4 + Wayland layer-shell, sem Quickshell, QML/Qt Quick, Electron, WebView ou runtime JavaScript em tempo de execução.
 
-Não é um redesign nem um shell inspirado no Velatura. A aplicação nova deve ser uma implementação equivalente do produto existente.
+Isto não é um redesign, uma versão lite ou um shell apenas inspirado no Velatura. O produto final deve preservar o comportamento e as funcionalidades do original, mesmo que sua implementação interna seja completamente diferente.
 
-## Documentos principais
+## Estado da implementação
 
-- AGENTS.md — regras obrigatórias para todos os agentes.
-- design.md — especificação visual, layout, superfícies, componentes e movimento.
-- prompts/PROMPT_BACKEND.md — instruções para ChatGPT/backend/integrações.
-- prompts/PROMPT_FRONTEND_CODEINA.md — instruções para Codeína, responsável pela UI.
-- docs/ARCHITECTURE.md — arquitetura proposta e contratos entre camadas.
-- docs/SOURCE_INVENTORY.md — mapa do projeto original e caminhos de referência.
-- docs/PORTING_MATRIX.md — matriz de paridade funcional.
-- docs/PARITY_CONTRACT.md — contrato obrigatório de paridade 1:1; define o que significa reproduzir o Velatura integralmente.
-- docs/SERVICE_CATALOG.md — inventário dos serviços QML, APIs internas e consumidores.
-- docs/SCRIPT_CATALOG.md — scripts auxiliares, imports e ferramentas externas.
-- docs/DEPENDENCY_MAP.md — dependências e integrações de sistema.
-- docs/IPC_API.md — comandos públicos do Velatura original.
-- docs/SERVICE_GRAPH.md — acoplamento entre serviços e lifecycle observado.
-- docs/SETTINGS_SCHEMA.md — todas as chaves e defaults de configuração.
-- docs/FEATURE_SURFACE_MAP.md — inventário de módulos, painéis, settings e faces de desktop.
-- docs/DECISIONS.md — decisões técnicas e pendências.
-- docs/TASKS.md — backlog e estado real do trabalho.
+### Já implementado
 
-## Ambiente primário
+- Backend Niri com event stream, reducer, supervisor/reconexão, fila serial de actions e descoberta de outputs.
+- Sessão Niri integrada, snapshots e lifecycle coordenado por `ApplicationRuntime`.
+- Observer GDK4 para mudanças de monitores.
+- Uma superfície GTK4 layer-shell da barra por monitor, com região de input delimitada.
+- Superfície de reserva independente para a exclusive zone da barra.
+- Ilha central com cápsula desenhada nativamente, geometria animada e troca de conteúdo por cross-fade.
+- Relógio no estado normal da ilha.
+- Seleção da ilha ativa pelo output focado no Niri.
+- Indicadores de workspaces com estados visuais e interação para trocar de workspace.
+- Chip visual do launcher (a integração completa com o painel ainda está pendente).
+- Serviço nativo de notificações D-Bus e apresentação na ilha, com conteúdo, botões de ação, dismiss e expiração automática.
+- Tokens visuais, CSS GTK e atualização da paleta.
+
+### Em andamento / pendente
+
+- Finalizar o estado normal da ilha, incluindo atividades em execução ao redor do relógio e seus comportamentos.
+- Completar todas as camadas da Dynamic Island: summary/glance, OSD, painéis, detalhes de módulos e transições entre estados.
+- Ligar os botões e módulos da barra aos serviços e painéis reais; implementar tray, rede, Bluetooth, áudio, bateria e demais módulos conforme o original.
+- Reproduzir os estilos e layouts configuráveis da barra (grouped, spread, island e bezel), incluindo todos os detalhes de input, fillets e comportamento multi-monitor.
+- Portar os painéis, Control Centre, launcher, Settings e suas páginas.
+- Portar as demais superfícies: Desktop/widgets, Dock, Deck, Lock, Capture, cantos de tela e integrações relacionadas.
+- Completar persistência, migração de configurações, atalhos, CLI/IPC e integração dos serviços.
+- Validar paridade visual e funcional em runtime, incluindo hotplug e múltiplos monitores.
+
+Os itens acima são uma visão resumida. A lista autoritativa de trabalho é `docs/TASKS.md`, e o estado por funcionalidade fica em `docs/PORTING_MATRIX.md`. Não marcar um recurso como concluído apenas porque sua interface foi desenhada.
+
+## Repositórios e fontes
+
+- **Projeto nativo:** [pxotitas/velatura-native](https://github.com/pxotitas/velatura-native).
+- **Shell original:** [pxotitas/velatura](https://github.com/pxotitas/velatura).
+- **Fonte Quickshell original:** [home/.config/quickshell](https://github.com/pxotitas/velatura/tree/main/home/.config/quickshell).
+- **Dynamic Island original:** [bar/widgets/DynamicIsland.qml](https://github.com/pxotitas/velatura/blob/main/home/.config/quickshell/bar/widgets/DynamicIsland.qml).
+- **Estado e arbitragem da ilha:** [bar/island/IslandState.qml](https://github.com/pxotitas/velatura/blob/main/home/.config/quickshell/bar/island/IslandState.qml).
+- **Repouso/atividades da ilha:** [bar/island/IslandRest.qml](https://github.com/pxotitas/velatura/blob/main/home/.config/quickshell/bar/island/IslandRest.qml).
+- **Barra e reserva:** [bar/Bar.qml](https://github.com/pxotitas/velatura/blob/main/home/.config/quickshell/bar/Bar.qml) · [bar/BarReserve.qml](https://github.com/pxotitas/velatura/blob/main/home/.config/quickshell/bar/BarReserve.qml).
+- **Workspaces:** [bar/widgets/WorkspacesWidget.qml](https://github.com/pxotitas/velatura/blob/main/home/.config/quickshell/bar/widgets/WorkspacesWidget.qml).
+- **Configurações originais:** [services/SettingsService.qml](https://github.com/pxotitas/velatura/blob/main/home/.config/quickshell/services/SettingsService.qml).
+- **Tokens visuais:** [theme/Theme.qml](https://github.com/pxotitas/velatura/blob/main/home/.config/quickshell/theme/Theme.qml).
+
+## Documentação do projeto
+
+Leia estes documentos antes de implementar:
+
+- [AGENTS.md](AGENTS.md) — regras obrigatórias para todos os agentes.
+- [design.md](design.md) — especificação visual, layout, superfícies, componentes e movimento.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — arquitetura e contratos entre camadas.
+- [docs/SOURCE_INVENTORY.md](docs/SOURCE_INVENTORY.md) — inventário da fonte original.
+- [docs/PORTING_MATRIX.md](docs/PORTING_MATRIX.md) — matriz de paridade funcional.
+- [docs/PARITY_CONTRACT.md](docs/PARITY_CONTRACT.md) — contrato obrigatório de paridade 1:1.
+- [docs/UI_SURFACE_AUDIT.md](docs/UI_SURFACE_AUDIT.md) — auditoria das superfícies visuais.
+- [docs/UI_COMPONENT_CATALOG.md](docs/UI_COMPONENT_CATALOG.md) — catálogo de componentes QML.
+- [docs/SERVICE_CATALOG.md](docs/SERVICE_CATALOG.md) — serviços originais e consumidores.
+- [docs/SCRIPT_CATALOG.md](docs/SCRIPT_CATALOG.md) — scripts auxiliares e ferramentas externas.
+- [docs/DEPENDENCY_MAP.md](docs/DEPENDENCY_MAP.md) — dependências e integrações de sistema.
+- [docs/IPC_API.md](docs/IPC_API.md) e [docs/IPC_AUDIT.md](docs/IPC_AUDIT.md) — contrato público de CLI/IPC.
+- [docs/SETTINGS_SCHEMA.md](docs/SETTINGS_SCHEMA.md) — chaves e defaults de configuração.
+- [docs/FEATURE_SURFACE_MAP.md](docs/FEATURE_SURFACE_MAP.md) — módulos, painéis, settings e superfícies.
+- [docs/DECISIONS.md](docs/DECISIONS.md) — decisões técnicas e pendências.
+- [docs/TASKS.md](docs/TASKS.md) — backlog e estado real do trabalho.
+
+## Ambiente-alvo
 
 - CachyOS Linux (base Arch), Niri / Wayland.
-- MacBook Air 2017, Intel Core i5-5350U (2C/4T), 8 GB RAM, Intel HD Graphics 6000.
-- GTK 4.24.1 e Rust 1.99.1 detectados durante a preparação deste repositório.
+- MacBook Air 2017, Intel Core i5-5350U (2 núcleos / 4 threads), 8 GB RAM e Intel HD Graphics 6000.
+- Stack GTK4 e Rust; as versões exatas instaladas variam conforme o ambiente.
 
-O alvo é limitado em CPU e memória. Preferir eventos, operações assíncronas, carregamento sob demanda e poucas atualizações de UI.
-
-## Fonte original
-
-A instalação original está em /home/px/.config/quickshell. Ela contém aproximadamente 658 arquivos e ocupa cerca de 6,6 MB na data da auditoria inicial.
-
-**Não mover, renomear, editar, apagar ou substituir essa instalação.** O novo projeto vive neste repositório separado. A referência original é somente leitura durante a portabilidade.
+O hardware é limitado em CPU, memória e temperatura. Preferir arquitetura orientada a eventos, operações assíncronas, cache e carregamento sob demanda. Otimização nunca pode remover fidelidade ou funcionalidades.
 
 ## Começar
 
-1. Leia integralmente AGENTS.md.
-2. Leia design.md e docs/ARCHITECTURE.md.
-3. Leia o prompt correspondente ao seu papel.
-4. Inspecione os arquivos originais citados antes de implementar cada recurso.
-5. Atualize docs/PORTING_MATRIX.md e docs/TASKS.md conforme o trabalho realmente avança.
+1. Leia integralmente `AGENTS.md`.
+2. Leia `design.md`, `docs/ARCHITECTURE.md` e `docs/PARITY_CONTRACT.md`.
+3. Leia os documentos específicos do recurso em `docs/`.
+4. Compare a implementação com a fonte original em [pxotitas/velatura](https://github.com/pxotitas/velatura).
+5. Atualize `docs/PORTING_MATRIX.md`, `docs/TASKS.md` e os documentos de auditoria conforme o trabalho realmente avança.
 
-Não iniciar autostart nem substituir o shell atual até haver paridade suficiente, testes e autorização explícita.
+Não habilite autostart nem substitua o shell atual até haver paridade suficiente, testes e autorização explícita.
 
+## Build e validação
 
-## Build e validação do backend
-
-O core permanece independente de GTK por padrão:
+O core pode ser testado sem compilar a UI GTK:
 
 ```bash
 cargo test
 cargo clippy --all-targets -- -D warnings
 ```
 
-O observer GDK4 e o dono do lifecycle da aplicação são opcionais:
+Com o observer GDK4:
 
 ```bash
 cargo test --features gdk4-observer
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-O feature `gdk4-observer` requer GTK4/GDK4 de desenvolvimento instalados. O binário GTK4 é habilitado pelo feature `gtk-app`; `src/main.rs` cria o `GtkApplication`, mantém um único `ApplicationRuntime` entre `activate` e `shutdown`, e monta a superfície temporária em `src/ui/bootstrap.rs`.
+A aplicação GTK4 e o layer-shell são habilitados pelo feature `gtk-app`:
 
+```bash
+cargo run --features gtk-app -- run
+```
 
-## Executável GTK4 e CLI de desenvolvimento
-
-O bootstrap mínimo é construído com:
+Para instalar o comando de desenvolvimento `velatura`:
 
 ```bash
 ./scripts/install-dev-cli.sh
 ```
 
-O instalador cria `~/.local/bin/velatura`, o nome definitivo do executável nativo. Se encontrar o antigo CLI Python regular nesse caminho, move-o para `~/.local/share/velatura/legacy-cli/velatura` (fora do PATH) antes de instalar o link. Não apaga o original: preserva rollback/referência. O link permanece estável para `scripts/velatura-native`: ele executa `target/debug/velatura` quando compilado e usa Cargo como fallback após um checkout/clean. Neste ambiente `~/.local/bin` já está no `PATH`. Comandos disponíveis no bootstrap:
+O executável público chama-se `velatura`. O CLI já reconhece `run`, `help`, `version`, `stop` e `restart`; os grupos de domínio/IPC estão catalogados, mas ainda precisam ser conectados aos serviços nativos. Nenhum comando deve encaminhar chamadas ao Quickshell legado.
 
-```bash
-velatura run
-velatura help
-velatura version
-velatura stop
-velatura restart
-velatura ipc call <target> <verb> [argumentos...]
-```
+## Segurança durante a migração
 
-O help também cataloga os grupos originais: `status`, `timer`, `note`, `task`, `open`, `close`, `panels`, `vm`, `media`, `capture`, `watch`, `game`, `layout`, `focus`, `nightlight`, `bar`, `widgets`, `volume`, `brightness`, `theme`, `wallpaper`, `say`, `lock`, `reload` e `complete`. Neste estágio, os comandos de domínio e IPC ainda retornam erro explícito de não implementado; nenhum encaminha chamadas ao Quickshell legado. A implementação nativa deve preservar o contrato em `docs/IPC_API.md` e `docs/IPC_AUDIT.md`.
+- A instalação original do Velatura deve permanecer intacta e ser tratada como somente leitura.
+- Não alterar configuração do Niri, autostart, serviços do usuário ou configurações do sistema sem autorização explícita.
+- Desenvolver e testar em paralelo ao shell atual, sem encerrá-lo ou substituí-lo automaticamente.
+- Não executar comandos privilegiados nem instalar pacotes de sistema sem autorização.
+- Não adicionar builds, caches, arquivos gerados ou segredos ao Git.
 
-O executável é chamado somente `velatura`. `velatura-native` não é o nome público e não deve ser usado em novos scripts/documentos.
+## Licença
 
-A janela atual é uma superfície de teste GTK4: confirma inicialização, backend Niri, enumeração GDK de monitores e solicitação manual de refresh. Não representa a UI final nem usa layer-shell.
+Este repositório nativo é distribuído sob a [Apache License 2.0](LICENSE).
