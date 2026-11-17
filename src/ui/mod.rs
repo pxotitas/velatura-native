@@ -31,6 +31,7 @@ pub struct Shell {
     app: gtk4::Application,
     settings: Rc<Settings>,
     bars: RefCell<Vec<Bar>>,
+    reserves: RefCell<Vec<surface::Reservation>>,
     session: Arc<NiriSession>,
     _css: gtk4::CssProvider,
     _palette: Option<gtk4::gio::FileMonitor>,
@@ -46,6 +47,7 @@ impl Shell {
             session,
             settings,
             bars: RefCell::new(Vec::new()),
+            reserves: RefCell::new(Vec::new()),
         });
         shell.sync();
         // Niri state reaches the bars from the session event stream.
@@ -74,6 +76,18 @@ impl Shell {
         let name = |monitor: &gtk4::gdk::Monitor| {
             monitor.connector().map(|name| name.to_string()).unwrap_or_default()
         };
+        // Keep reservations independently owned from the visible bars, as
+        // the original BarReserve.qml does. This prevents layout jumps when
+        // a bar surface is recreated during monitor synchronization.
+        let mut reserves = self.reserves.borrow_mut();
+        reserves.retain(|reserve| monitors.iter().any(|monitor| name(monitor) == reserve.connector));
+        for monitor in &monitors {
+            if !reserves.iter().any(|reserve| reserve.connector == name(monitor)) {
+                reserves.push(surface::Reservation::new(&self.app, monitor, self.settings.bar_reserve()));
+            }
+        }
+        drop(reserves);
+
         let mut bars = self.bars.borrow_mut();
         bars.retain(|bar| monitors.iter().any(|monitor| name(monitor) == bar.connector));
         for monitor in &monitors {

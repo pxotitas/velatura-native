@@ -106,6 +106,11 @@ impl Settings {
         }
     }
 
+    /// Reserved top band, matching Theme.barReserve / BarReserve.qml.
+    pub fn bar_reserve(&self) -> i32 {
+        if self.bar_hidden { 0 } else { self.bar_margin + self.bar_height }
+    }
+
     /// Width of the island at rest, `ModuleService.entry("clock").width`.
     pub fn rest_width(&self) -> i32 {
         if self.clock_shows_date { 240 } else { 150 }
@@ -118,5 +123,26 @@ impl Settings {
         } else {
             f64::from(self.motion_scale) / 100.0
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::Settings;
+
+    #[test]
+    fn bar_reserve_matches_original_theme_metric() {
+        let settings = Settings::default();
+        assert_eq!(settings.bar_reserve(), 48);
+    }
+
+    #[test]
+    fn hidden_bar_releases_the_reservation() {
+        let settings = Settings {
+            bar_hidden: true,
+            ..Settings::default()
+        };
+        assert_eq!(settings.bar_reserve(), 0);
     }
 }

@@ -121,3 +121,12 @@ descrevendo conteúdo, defeitos conhecidos e o que estudar no QML original) e
   `barStyle: "grouped"`, `barSides: "capsule"`.
 - O re-port deve ser feito comparando lado a lado com o original na sessão,
   fatia por fatia, e validando com `niri msg layers` + screenshot.
+
+
+## D-012 — Reserva persistente da faixa superior (BarReserve)
+
+**Estado:** implementado no frontend nativo; validação em runtime no Niri pendente.
+
+A reserva do topo é uma superfície layer-shell independente por monitor, na camada `background`, ancorada em top/left/right, com altura visual de 1 px, região de input vazia e exclusive zone igual a `barMargin + barHeight` (ou zero quando `barHidden`). A superfície visível da barra continua ignorando exclusive zones.
+
+Isso reproduz o contrato de `bar/BarReserve.qml` e `Bar.qml`: a reserva pertence à tela, não à janela visível da barra, e permanece enquanto a superfície da barra é recriada. O comportamento do Niri com essa combinação específica ainda precisa ser verificado com `niri msg layers` e uma janela tiled de teste; não alterar a configuração do compositor para validar.
