@@ -450,15 +450,10 @@ fn serve(
     }
 }
 
-/// Assign the timeout the original's `timeoutFor` assigns: critical waits for
-/// the user, otherwise the sender's value capped, else the default.
-fn timeout_for(urgency: Urgency, sender_timeout: i32) -> i32 {
-    if urgency == Urgency::Critical {
-        return 0;
-    }
-    if sender_timeout > 0 {
-        return sender_timeout.min(EXPIRE_CAP_MS);
-    }
+/// Every notification leaves the island after the same five seconds, whatever
+/// the sender or its urgency asks for (a deliberate change from the
+/// original's `timeoutFor`, which let critical ones wait for the user).
+fn timeout_for(_urgency: Urgency, _sender_timeout: i32) -> i32 {
     DEFAULT_TIMEOUT_MS
 }
 
@@ -771,9 +766,9 @@ mod tests {
 
     #[test]
     fn timeout_rules_match_original() {
-        assert_eq!(timeout_for(Urgency::Critical, 123), 0);
-        assert_eq!(timeout_for(Urgency::Normal, 3000), 3000);
-        assert_eq!(timeout_for(Urgency::Normal, 999_999), EXPIRE_CAP_MS);
+        assert_eq!(timeout_for(Urgency::Critical, 123), DEFAULT_TIMEOUT_MS);
+        assert_eq!(timeout_for(Urgency::Normal, 3000), DEFAULT_TIMEOUT_MS);
+        assert_eq!(timeout_for(Urgency::Normal, 999_999), DEFAULT_TIMEOUT_MS);
         assert_eq!(timeout_for(Urgency::Normal, -1), DEFAULT_TIMEOUT_MS);
     }
 
