@@ -100,19 +100,17 @@ O QML original distingue `hover.hovered` (ponteiro dentro agora) de `pointerEnte
 
 ## D-011 — Primeira fatia de UI arquivada em `glm-made-things/`
 
-**Estado:** executado por decisão do usuário em 16/11/2026.
+**Estado:** primeira fatia arquivada por decisão do usuário em 16/11/2026; re-port parcial posterior em andamento.
 
 A primeira implementação da barra/island (`src/ui/`) foi reprovada na
 validação visual: barra torta no meio, faixa preta do módulo de notificações
 até a borda direita, transparência incorreta e workspaces fora do estilo do
 original. Os arquivos foram movidos para `glm-made-things/` (com `README`
 descrevendo conteúdo, defeitos conhecidos e o que estudar no QML original) e
-`src/ui/` foi removido da árvore.
+`src/ui/` foi removido naquela revisão. Os commits `0eeaa45` a `fa62b17` retomaram um re-port parcial: superfície da barra, reserva, workspaces, relógio em repouso e notificações. Isso não revoga a reprovação visual da primeira fatia nem comprova paridade da implementação atual.
 
-- `main.rs` mantém o ciclo GTK (activate/shutdown) e o runtime, mas não
-  constrói superfícies; `velatura run` avisa em stderr e encerra.
-- O backend (`src/services/`, sessão Niri, CLI, 53+1 testes) permanece na
-  árvore e continua verde.
+- A decisão arquivou os arquivos da primeira tentativa; não deve ser lida como estado atual do re-port.
+- O backend (`src/services/`, sessão Niri e CLI) permanece na árvore. O estado de validação atual deve ser consultado nos checks executados, sem inferir que os testes seguem verdes por este registro histórico.
 - Lições registradas para o re-port: janela GTK4 só mapeia com
   `window.present()`; o original usa superfície full-screen transparente com
   reserve em superfície separada e band que morfa (`Bar.qml`); os estilos

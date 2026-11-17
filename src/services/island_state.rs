@@ -141,11 +141,11 @@ impl IslandState {
     /// `true` when the caller must tell the notification service to dismiss
     /// its current notification (the original calls `NotificationService
     /// .dismiss()` here).
-    pub fn open(&mut self, panel: &str) -> bool {
+    pub fn open(&mut self, panel: &str, world: World) -> bool {
         if !self.active {
             return false;
         }
-        let dismiss_notification = self.transient.is_some() || self.summary;
+        let dismiss_notification = world.notification_active;
         self.transient = None;
         self.transient_expiry = None;
         self.summary = false;
@@ -211,7 +211,7 @@ mod tests {
     fn panel_is_topmost() {
         let mut state = IslandState::new(true);
         state.request_osd(0, osd());
-        state.open("controls");
+        state.open("controls", World::default());
         let world = World {
             notification_active: true,
             notification_critical: false,
@@ -232,21 +232,31 @@ mod tests {
     #[test]
     fn osd_dropped_while_panel_open() {
         let mut state = IslandState::new(true);
-        state.open("launcher");
+        state.open("launcher", World::default());
         state.request_osd(0, osd());
         assert!(state.transient().is_none());
         assert_eq!(state.layer(World::default()), Layer::Panel);
     }
 
     #[test]
-    fn open_cancels_transient_and_summary_but_not_notification() {
+    fn open_cancels_transient_and_summary_and_reports_notification() {
         let mut state = IslandState::new(true);
         state.request_osd(0, osd());
         state.summary = true;
-        assert!(state.open("controls"));
+        let world = World {
+            notification_active: true,
+            notification_critical: false,
+        };
+        assert!(state.open("controls", world));
         assert!(state.transient().is_none());
         assert!(!state.summary);
         assert!(state.expanded());
+    }
+
+    #[test]
+    fn opening_without_notification_does_not_request_dismissal() {
+        let mut state = IslandState::new(true);
+        assert!(!state.open("controls", World::default()));
     }
 
     #[test]
@@ -254,7 +264,7 @@ mod tests {
         let mut state = IslandState::new(true);
         state.request_osd(0, osd());
         state.summary = true;
-        state.open("controls");
+        state.open("controls", World::default());
         assert!(state.set_active(false));
         assert_eq!(state.layer(World::default()), Layer::Modules);
         assert!(state.open_panel.is_none());

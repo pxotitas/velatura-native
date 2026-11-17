@@ -66,6 +66,10 @@ fn render(settings: &Settings, fonts: &Fonts, p: &Palette) -> String {
          .island-clock {{ font-family: \"{family}\"; font-size: {regular}px; font-weight: 600; color: {text}; }}\
          .island-date {{ font-family: \"{family}\"; font-size: {small}px; font-weight: 400; color: {muted}; }}\
          .chip-glyph {{ font-family: \"{mono}\"; font-size: {glyph}px; color: {text}; }}\
+         .osd-glyph {{ font-family: \"{mono}\"; font-size: 15px; color: {text}; }}\
+         .osd-label {{ font-family: \"{family}\"; font-size: {small}px; font-weight: 600; color: {text}; }}\
+         .osd-level trough {{ min-height: 4px; border: none; border-radius: 2px; background: {muted}; padding: 0; }}\
+         .osd-level progress {{ min-height: 4px; border: none; border-radius: 2px; background: {accent}; }}\
          .toast-title {{ font-family: \"{family}\"; font-size: 14px; font-weight: 600; color: {text}; }}\
          .toast-meta {{ font-family: \"{family}\"; font-size: {small}px; color: {muted}; }}\
          .toast-body {{ font-family: \"{family}\"; font-size: {regular}px; color: {muted}; }}\
