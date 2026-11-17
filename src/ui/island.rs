@@ -14,12 +14,13 @@ use super::capsule::Capsule;
 use super::clock;
 use super::motion::{Curve, Tween};
 use super::notification_layer::NotificationLayer;
+use super::notification_panel::NotificationHistoryPanel;
 use super::osd_layer::OsdLayer;
 use super::settings::Settings;
 use super::tokens;
 use crate::niri_session::NiriSession;
 use crate::services::island_state::{
-    IslandState, Layer, TransientEvent, World, TRANSIENT_DURATION_MS,
+    IslandState, Layer, TRANSIENT_DURATION_MS, TransientEvent, World,
 };
 use crate::services::notifications::{NotificationService, Toast, Urgency};
 
@@ -34,6 +35,7 @@ pub struct Island {
     hovered: Cell<bool>,
     stack: gtk4::Stack,
     notification: NotificationLayer,
+    notification_history: NotificationHistoryPanel,
     osd: OsdLayer,
     osd_expiry: TimerSlot,
     toast: RefCell<Option<Toast>>,
@@ -81,12 +83,20 @@ impl Island {
         stack.set_transition_type(gtk4::StackTransitionType::Crossfade);
         stack.set_transition_duration((tokens::DURATION_FAST * settings.motion()) as u32);
         stack.add_named(&clock::build(&settings), Some("modules"));
-        let notification = NotificationLayer::new(service, session);
+        let notification = NotificationLayer::new(Rc::clone(&service), session);
         stack.add_named(&notification.widget, Some("notification"));
         let osd = OsdLayer::new(&settings);
         stack.add_named(&osd.widget, Some("osd"));
 
         let island = Rc::new_cyclic(|weak: &Weak<Island>| {
+            let close_weak = weak.clone();
+            let notification_history =
+                NotificationHistoryPanel::new(Rc::clone(&service), move || {
+                    if let Some(island) = close_weak.upgrade() {
+                        island.close_panel();
+                    }
+                });
+            stack.add_named(&notification_history.widget, Some("notification-history"));
             let tween = |initial: f64| {
                 let weak = weak.clone();
                 Tween::new(&capsule, initial, move |_| {
@@ -106,6 +116,7 @@ impl Island {
                 hovered: Cell::new(false),
                 stack: stack.clone(),
                 notification,
+                notification_history,
                 osd,
                 osd_expiry: TimerSlot::default(),
                 toast: RefCell::new(None),
@@ -114,6 +125,7 @@ impl Island {
         });
 
         capsule.set_content(Some(&stack));
+        capsule.set_focusable(true);
         island.sync_layer();
         island.apply_geometry();
 
@@ -133,6 +145,20 @@ impl Island {
             }
         });
         capsule.add_controller(motion);
+
+        let key = gtk4::EventControllerKey::new();
+        let weak = Rc::downgrade(&island);
+        key.connect_key_pressed(move |_, key, _, _| {
+            if key == gtk4::gdk::Key::Escape
+                && let Some(island) = weak.upgrade()
+                && island.state.borrow().expanded()
+            {
+                island.close_panel();
+                return gtk4::glib::Propagation::Stop;
+            }
+            gtk4::glib::Propagation::Proceed
+        });
+        capsule.add_controller(key);
         island
     }
 
@@ -143,7 +169,11 @@ impl Island {
 
     /// The attached island's strip above the capsule, up to the screen edge.
     fn notch_pad_of(settings: &Settings) -> i32 {
-        if settings.notched() { settings.bar_margin } else { 0 }
+        if settings.notched() {
+            settings.bar_margin
+        } else {
+            0
+        }
     }
 
     pub fn notch_pad(&self) -> i32 {
@@ -152,7 +182,10 @@ impl Island {
 
     /// Current (animated) size of the shape, notch strip included.
     pub fn size(&self) -> (i32, i32) {
-        (self.width.value().round() as i32, self.height.value().round() as i32)
+        (
+            self.width.value().round() as i32,
+            self.height.value().round() as i32,
+        )
     }
 
     pub fn layer(&self) -> Layer {
@@ -179,6 +212,9 @@ impl Island {
         let dismiss_notification = self.state.borrow_mut().open(panel, self.world.get());
         if self.state.borrow().expanded() {
             self.osd_expiry.cancel();
+            if self.state.borrow().open_panel.as_deref() == Some("notifications") {
+                self.notification_history.refresh();
+            }
         }
         if dismiss_notification {
             self.notification.dismiss();
@@ -189,6 +225,14 @@ impl Island {
     pub fn close_panel(&self) {
         self.state.borrow_mut().close();
         self.sync_layer();
+    }
+
+    pub fn refresh_notification_panel(&self) {
+        self.notification_history.refresh();
+    }
+
+    pub fn keyboard_panel_open(&self) -> bool {
+        self.state.borrow().open_panel.as_deref() == Some("notifications")
     }
 
     /// Receives a real OSD event from a native service adapter. The event is
@@ -225,7 +269,9 @@ impl Island {
     pub fn set_notification(&self, toast: Option<Toast>) {
         self.world.set(World {
             notification_active: toast.is_some(),
-            notification_critical: toast.as_ref().is_some_and(|t| t.urgency == Urgency::Critical),
+            notification_critical: toast
+                .as_ref()
+                .is_some_and(|t| t.urgency == Urgency::Critical),
         });
         if toast.is_some() {
             self.notification.set_toast(toast.as_ref());
@@ -277,6 +323,15 @@ impl Island {
                 height: self.settings.bar_height,
                 padding: 10,
             },
+            Layer::Panel if self.state.borrow().open_panel.as_deref() == Some("notifications") => {
+                LayerSize {
+                    width: 380,
+                    height: NotificationHistoryPanel::height(
+                        self.notification_history_count().min(6),
+                    ),
+                    padding: 4,
+                }
+            }
             _ => rest,
         }
     }
@@ -310,9 +365,11 @@ impl Island {
             size.padding,
             size.padding + notch_half,
         );
+        let notification_panel = self.state.borrow().open_panel.as_deref() == Some("notifications");
         let page = match layer {
             Layer::Notification => "notification",
             Layer::Osd => "osd",
+            Layer::Panel if notification_panel => "notification-history",
             _ => "modules",
         };
         if self.stack.visible_child_name().as_deref() != Some(page) {
@@ -335,6 +392,10 @@ impl Island {
         if let Some(changed) = self.changed.borrow().as_ref() {
             changed();
         }
+    }
+
+    fn notification_history_count(&self) -> usize {
+        self.notification_history.count()
     }
 }
 

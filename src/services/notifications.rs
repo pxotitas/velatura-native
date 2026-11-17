@@ -139,6 +139,8 @@ pub enum NotificationEvent {
     ActionInvoked { id: u32, key: String },
     /// The history changed (arrivals, removals, clearing).
     HistoryChanged(Vec<HistoryEntry>),
+    /// Do Not Disturb changed after the service applied its command.
+    DoNotDisturbChanged(bool),
     /// The daemon acquired or lost the bus name.
     NameOwned(bool),
 }
@@ -518,6 +520,7 @@ fn apply_command(shared: &Arc<Shared>, command: ServerCommand) {
                 guard.expiry = None;
             }
             drop(guard);
+            shared.publish(NotificationEvent::DoNotDisturbChanged(silence));
             if let Some(toast) = took {
                 shared.publish(NotificationEvent::Closed(toast.id));
                 shared.emit_closed_signal(toast.id, CLOSE_DISMISSED);

@@ -220,6 +220,7 @@ Comandos iniciais auditados (nomes são tipos de domínio, não nomes obrigatór
 - Brightness: SetPercent, Step.
 - Session: ação interna observada lock/suspend/logout/reboot/shutdown; confirmar o gate de UI por componente. Não há evidência nesta rodada para hibernate, lid policy ou um target CLI power.
 - Notifications: SetDoNotDisturb, Dismiss, InvokeAction, ClearHistory.
+- Notifications UI event: `DoNotDisturbChanged(bool)` is published after the service applies the DND command; history refresh remains `HistoryChanged(Vec<HistoryEntry>)`.
 - Media: Play, Pause, Toggle, Next, Previous, Seek, SetPosition.
 - Clipboard: Search, CopyEntry, DeleteEntry, ClearHistory; wipe-on-lock é policy persistente.
 - Capture: Open{shape,destination}, CaptureScreen, CaptureText, Cancel.

@@ -56,6 +56,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Recorder backend | services/RecorderService.qml, scripts/record.py | AUDITED | lifecycle, encoder fallback, áudio e recuperação após reload |
 | Polkit agent | services/PolkitService.qml | AUDITED | agent registration, PAM flow, retry e fallback |
 | Notifications / OSD | services/NotificationService.qml, OsdService.qml, src/services/notifications.rs, src/ui/osd_layer.rs | IN PROGRESS | servidor freedesktop, ações, histórico e timeouts critical/sender respeitam o original; OSD GTK recebe eventos tipados e expira em 1800 ms; faltam produtores de áudio/brilho/bateria, debounce/supressão, timeout configurável e validação runtime |
+| Notifications module + history panel | bar/modules/NotificationsModule.qml, services/NotificationService.qml, src/ui/notification_panel.rs | IN PROGRESS | chip e painel consomem histórico real; DND, limpar, remover e default action estão ligados ao serviço; faltam comparar layout/ícones/estados com QML, imagens de notificação não estão preservadas no modelo do histórico, ações sem default não são interativas, foco/teclado e validação runtime |
 | Audio | services/AudioService.qml | AUDITED | volume, mute, sinks, sources |
 | Bluetooth | services/BluetoothService.qml | AUDITED | dispositivos, scan, conexão |
 | Network | services/NetworkService.qml, scripts/network.py | AUDITED | Wi-Fi, conexões, scan, senha e status |

@@ -29,7 +29,9 @@ fn installed_families() -> Vec<String> {
     };
     let mut families = Vec::new();
     for line in String::from_utf8_lossy(&output.stdout).lines() {
-        let Some((file, names)) = line.split_once('\t') else { continue };
+        let Some((file, names)) = line.split_once('\t') else {
+            continue;
+        };
         if std::path::Path::new(file).exists() {
             families.extend(names.split(',').map(|name| name.trim().to_string()));
         }
@@ -70,6 +72,20 @@ fn render(settings: &Settings, fonts: &Fonts, p: &Palette) -> String {
          .osd-label {{ font-family: \"{family}\"; font-size: {small}px; font-weight: 600; color: {text}; }}\
          .osd-level trough {{ min-height: 4px; border: none; border-radius: 2px; background: {muted}; padding: 0; }}\
          .osd-level progress {{ min-height: 4px; border: none; border-radius: 2px; background: {accent}; }}\
+         .notification-chip-value {{ font-family: \"{family}\"; font-size: {small}px; font-weight: 600; color: {text}; }}\
+         .notification-history-card {{ background: {surface_hover}; border-radius: 18px; padding: 16px; }}\
+         .notification-history-mark {{ background: {surface_hover}; border-radius: 12px; font-family: \"{mono}\"; font-size: 20px; color: {text}; }}\
+         .notification-history-heading {{ font-family: \"{family}\"; font-size: 14px; color: {text}; }}\
+         .notification-history-row {{ border-radius: 8px; }}\
+         .notification-history-row:hover {{ background: {surface_hover}; }}\
+         .notification-history-summary {{ font-family: \"{family}\"; font-size: {small}px; font-weight: 600; color: {text}; }}\
+         .notification-history-body {{ font-family: \"{family}\"; font-size: {small}px; color: {muted}; }}\
+         .notification-history-app {{ font-family: \"{family}\"; font-size: 10px; color: {muted}; }}\
+         .notification-history-glyph {{ font-family: \"{mono}\"; font-size: 11px; color: {accent}; }}\
+         .notification-history-critical {{ font-family: \"{mono}\"; font-size: 11px; color: {bad}; }}\
+         .notification-history-button {{ min-height: 22px; padding: 0 10px; border: none; border-radius: 11px; background: {surface_hover}; color: {text}; font-family: \"{family}\"; font-size: 11px; }}\
+         .notification-history-button.active {{ background: {accent}; color: {accent_text}; }}\
+         .notification-history-remove {{ min-width: 22px; min-height: 22px; padding: 0; border: none; background: transparent; color: {muted}; }}\
          .toast-title {{ font-family: \"{family}\"; font-size: 14px; font-weight: 600; color: {text}; }}\
          .toast-meta {{ font-family: \"{family}\"; font-size: {small}px; color: {muted}; }}\
          .toast-body {{ font-family: \"{family}\"; font-size: {regular}px; color: {muted}; }}\
@@ -83,6 +99,7 @@ fn render(settings: &Settings, fonts: &Fonts, p: &Palette) -> String {
         regular = tokens::FONT_SIZE_REGULAR,
         small = tokens::FONT_SIZE_SMALL,
         accent = p.accent.css(),
+        surface_hover = p.surface_hover.css(),
         rim = p.border.css(),
     )
 }
@@ -108,10 +125,16 @@ pub fn install(settings: &Rc<Settings>) -> Rc<Theme> {
     }
     let theme = Rc::new(Theme { provider });
     palette::on_change({
-        let (settings, fonts, weak) = (Rc::clone(settings), Rc::clone(&fonts), Rc::downgrade(&theme));
+        let (settings, fonts, weak) = (
+            Rc::clone(settings),
+            Rc::clone(&fonts),
+            Rc::downgrade(&theme),
+        );
         move || {
             if let Some(theme) = weak.upgrade() {
-                theme.provider.load_from_string(&render(&settings, &fonts, &palette::current()));
+                theme
+                    .provider
+                    .load_from_string(&render(&settings, &fonts, &palette::current()));
             }
         }
     });
