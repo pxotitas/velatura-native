@@ -12,6 +12,7 @@ use super::settings::Settings;
 use super::zone::Zone;
 use crate::niri_session::{NiriSession, NiriSessionSnapshot};
 use crate::services::island_state::Layer;
+use crate::services::notifications::NotificationService;
 use super::{surface, tokens};
 
 pub struct Bar {
@@ -28,6 +29,7 @@ impl Bar {
         settings: Rc<Settings>,
         session: Arc<NiriSession>,
         open_panel: Rc<dyn Fn(&str)>,
+        notifications: Rc<NotificationService>,
     ) -> Self {
         let window = gtk4::ApplicationWindow::new(app);
         surface::configure(&window, monitor);
@@ -35,7 +37,7 @@ impl Bar {
         let stage = gtk4::Fixed::new();
         window.set_child(Some(&stage));
 
-        let island = Island::new(Rc::clone(&settings), true);
+        let island = Island::new(Rc::clone(&settings), true, notifications);
         let fillets = [Fillet::new(true), Fillet::new(false)];
         stage.put(&island.capsule, 0.0, 0.0);
         for fillet in &fillets {

@@ -9,6 +9,7 @@ pub mod css;
 pub mod fillet;
 pub mod island;
 pub mod motion;
+pub mod notification_layer;
 pub mod palette;
 pub mod settings;
 pub mod surface;
@@ -24,7 +25,8 @@ use std::sync::Arc;
 use bar::Bar;
 use settings::Settings;
 
-use crate::niri_session::{NiriSession, NiriSessionEvent};
+use crate::niri_session::{NiriSession, NiriSessionEvent, NiriSessionSnapshot};
+use crate::services::notifications::{NotificationEvent, NotificationService};
 
 /// Owns every bar surface and keeps them in step with the monitors.
 pub struct Shell {
@@ -33,7 +35,8 @@ pub struct Shell {
     bars: RefCell<Vec<Bar>>,
     reserves: RefCell<Vec<surface::Reservation>>,
     session: Arc<NiriSession>,
-    _css: gtk4::CssProvider,
+    notifications: Rc<NotificationService>,
+    _css: Rc<css::Theme>,
     _palette: Option<gtk4::gio::FileMonitor>,
 }
 
@@ -44,6 +47,7 @@ impl Shell {
             app: app.clone(),
             _palette: palette::watch(),
             _css: css::install(&settings),
+            notifications: Rc::new(NotificationService::start()),
             session,
             settings,
             bars: RefCell::new(Vec::new()),
@@ -57,7 +61,11 @@ impl Shell {
             while let Ok(event) = shell.session.try_recv() {
                 if let NiriSessionEvent::SnapshotChanged(snapshot) = event {
                     shell.bars.borrow().iter().for_each(|bar| bar.update(&snapshot));
+                    shell.follow_focus(&snapshot);
                 }
+            }
+            while let Ok(event) = shell.notifications.try_recv() {
+                shell.notified(event);
             }
             gtk4::glib::ControlFlow::Continue
         });
@@ -98,10 +106,47 @@ impl Shell {
                     Rc::clone(&self.settings),
                     Arc::clone(&self.session),
                     Rc::new(|_panel: &str| {}),
+                    Rc::clone(&self.notifications),
                 );
                 bar.update(&self.session.snapshot());
+                if let Some(toast) = self.notifications.current() {
+                    bar.island().set_notification(Some(toast));
+                }
                 bars.push(bar);
             }
+        }
+        drop(bars);
+        self.follow_focus(&self.session.snapshot());
+    }
+
+    /// A notification reaches every island; only the live one shows it.
+    fn notified(&self, event: NotificationEvent) {
+        let bars = self.bars.borrow();
+        match event {
+            NotificationEvent::Arrived(toast) => {
+                bars.iter().for_each(|bar| bar.island().set_notification(Some(toast.clone())));
+            }
+            NotificationEvent::Expired(id) | NotificationEvent::Closed(id) => {
+                for bar in bars.iter().filter(|bar| bar.island().notification_id() == Some(id)) {
+                    bar.island().set_notification(None);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// The live island is the one on the focused output (`Island.active`).
+    fn follow_focus(&self, snapshot: &NiriSessionSnapshot) {
+        let focused = snapshot.niri.focused_workspace_id.as_ref().and_then(|id| id.as_i64());
+        let output = snapshot
+            .niri
+            .workspaces
+            .iter()
+            .find(|ws| focused.is_some() && ws["id"].as_i64() == focused)
+            .and_then(|ws| ws["output"].as_str().map(str::to_string));
+        for bar in self.bars.borrow().iter() {
+            let live = output.as_deref().is_none_or(|name| name == bar.connector);
+            bar.island().set_active(live);
         }
     }
 }

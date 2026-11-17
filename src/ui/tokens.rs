@@ -49,6 +49,15 @@ impl Rgba {
         )
     }
 
+    pub fn mix(self, other: Rgba, t: f32) -> Self {
+        Self(
+            self.0 + (other.0 - self.0) * t,
+            self.1 + (other.1 - self.1) * t,
+            self.2 + (other.2 - self.2) * t,
+            self.3 + (other.3 - self.3) * t,
+        )
+    }
+
     /// `Qt.tint(self, overlay)`: the overlay laid over this colour.
     pub fn tint(self, over: Rgba) -> Self {
         let a = over.3;

@@ -13,7 +13,9 @@ use super::tokens::Rgba;
 #[derive(Debug, Clone)]
 pub struct Palette {
     pub accent: Rgba,
+    pub accent_hover: Rgba,
     pub accent_text: Rgba,
+    pub border: Rgba,
     pub text: Rgba,
     pub text_muted: Rgba,
     pub surface_hover: Rgba,
@@ -23,7 +25,9 @@ impl Default for Palette {
     fn default() -> Self {
         Self {
             accent: Rgba::hex(0x0a, 0x84, 0xff),
+            accent_hover: Rgba::hex(0x40, 0x9c, 0xff),
             accent_text: Rgba::hex(0xff, 0xff, 0xff),
+            border: Rgba::hex(0x26, 0x26, 0x26),
             text: Rgba::hex(0xff, 0xff, 0xff),
             text_muted: Rgba::hex(0x8e, 0x8e, 0x93),
             surface_hover: Rgba::hex(0x20, 0x20, 0x20),
@@ -35,7 +39,9 @@ impl Default for Palette {
 #[serde(rename_all = "camelCase", default)]
 struct Colors {
     accent: Option<String>,
+    accent_hover: Option<String>,
     accent_text: Option<String>,
+    border: Option<String>,
     text: Option<String>,
     text_muted: Option<String>,
     surface_hover: Option<String>,
@@ -78,7 +84,9 @@ fn reload() {
     let base = Palette::default();
     let next = Palette {
         accent: parse(&colors.accent).unwrap_or(base.accent),
+        accent_hover: parse(&colors.accent_hover).unwrap_or(base.accent_hover),
         accent_text: parse(&colors.accent_text).unwrap_or(base.accent_text),
+        border: parse(&colors.border).unwrap_or(base.border),
         text: parse(&colors.text).unwrap_or(base.text),
         text_muted: parse(&colors.text_muted).unwrap_or(base.text_muted),
         surface_hover: parse(&colors.surface_hover).unwrap_or(base.surface_hover),

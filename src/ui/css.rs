@@ -1,10 +1,12 @@
 //! Stylesheet for the parts of the shell that are real GTK widgets (text).
-//! Shapes are painted by their own widgets; this only carries type and the
-//! transparent layer window.
+//! Shapes are painted by their own widgets; this carries type, colours that
+//! follow the palette, and the transparent layer window.
 
 use gtk4::gdk;
 use gtk4::prelude::*;
+use std::rc::Rc;
 
+use super::palette::{self, Palette};
 use super::settings::Settings;
 use super::tokens;
 
@@ -27,9 +29,7 @@ fn installed_families() -> Vec<String> {
     };
     let mut families = Vec::new();
     for line in String::from_utf8_lossy(&output.stdout).lines() {
-        let Some((file, names)) = line.split_once('\t') else {
-            continue;
-        };
+        let Some((file, names)) = line.split_once('\t') else { continue };
         if std::path::Path::new(file).exists() {
             families.extend(names.split(',').map(|name| name.trim().to_string()));
         }
@@ -50,28 +50,51 @@ pub fn font_of(stack: &str) -> String {
         .unwrap_or_else(|| "sans-serif".into())
 }
 
-pub fn install(settings: &Settings) -> gtk4::CssProvider {
-    let family = font_of(&settings.font_family);
-    let mono = font_of(&settings.font_mono);
+struct Fonts {
+    text: String,
+    mono: String,
+}
+
+fn render(settings: &Settings, fonts: &Fonts, p: &Palette) -> String {
+    let (text, muted, accent_text) = (p.text.css(), p.text_muted.css(), p.accent_text.css());
+    let (family, mono) = (&fonts.text, &fonts.mono);
     let glyph = (f64::from(settings.bar_height) * 0.44).round() as i32;
-    let css = format!(
+    let bad = "rgba(255,69,58,1.000)";
+    format!(
         "window.velatura-surface, window.velatura-surface > * {{\
             background: transparent; box-shadow: none; border: none; border-radius: 0; outline: none; }}\
          .island-clock {{ font-family: \"{family}\"; font-size: {regular}px; font-weight: 600; color: {text}; }}\
-         .chip-glyph {{ font-family: \"{mono}\"; font-size: {glyph}px; color: {text}; }}\
          .island-date {{ font-family: \"{family}\"; font-size: {small}px; font-weight: 400; color: {muted}; }}\
-         .toast-title {{ font-family: \"{family}\"; font-size: {regular}px; font-weight: 700; color: {text}; }}\
-         .toast-body {{ font-family: \"{family}\"; font-size: {small}px; font-weight: 400; color: {muted}; }}\
-         .toast-button {{ font-family: \"{family}\"; font-size: {small}px; font-weight: 600; \
-            color: {text}; background: {surface}; border-radius: 999px; padding: 4px 12px; }}",
+         .chip-glyph {{ font-family: \"{mono}\"; font-size: {glyph}px; color: {text}; }}\
+         .toast-title {{ font-family: \"{family}\"; font-size: 14px; font-weight: 600; color: {text}; }}\
+         .toast-meta {{ font-family: \"{family}\"; font-size: {small}px; color: {muted}; }}\
+         .toast-body {{ font-family: \"{family}\"; font-size: {regular}px; color: {muted}; }}\
+         .toast-button {{ font-family: \"{family}\"; font-size: 12px; font-weight: 500; color: {text}; }}\
+         .toast-button-first {{ font-family: \"{family}\"; font-size: 12px; font-weight: 500; color: {accent_text}; }}\
+         .toast-cell {{ font-family: \"{family}\"; font-size: {regular}px; font-weight: 500; color: {text}; }}\
+         .toast-cell-first {{ font-family: \"{family}\"; font-size: {regular}px; font-weight: 600; color: {accent}; }}\
+         .toast-glyph {{ font-family: \"{mono}\"; font-size: 17px; color: {accent}; }}\
+         .toast-glyph-bad {{ font-family: \"{mono}\"; font-size: 17px; color: {bad}; }}\
+         .toast-hairline {{ background: {rim}; }}",
         regular = tokens::FONT_SIZE_REGULAR,
         small = tokens::FONT_SIZE_SMALL,
-        text = tokens::TEXT.css(),
-        muted = tokens::TEXT_MUTED.css(),
-        surface = tokens::ISLAND_SURFACE.css(),
-    );
+        accent = p.accent.css(),
+        rim = p.border.css(),
+    )
+}
+
+pub struct Theme {
+    provider: gtk4::CssProvider,
+}
+
+/// Installs the stylesheet and keeps it in step with the palette.
+pub fn install(settings: &Rc<Settings>) -> Rc<Theme> {
+    let fonts = Rc::new(Fonts {
+        text: font_of(&settings.font_family),
+        mono: font_of(&settings.font_mono),
+    });
     let provider = gtk4::CssProvider::new();
-    provider.load_from_string(&css);
+    provider.load_from_string(&render(settings, &fonts, &palette::current()));
     if let Some(display) = gdk::Display::default() {
         gtk4::style_context_add_provider_for_display(
             &display,
@@ -79,5 +102,14 @@ pub fn install(settings: &Settings) -> gtk4::CssProvider {
             gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
     }
-    provider
+    let theme = Rc::new(Theme { provider });
+    palette::on_change({
+        let (settings, fonts, weak) = (Rc::clone(settings), Rc::clone(&fonts), Rc::downgrade(&theme));
+        move || {
+            if let Some(theme) = weak.upgrade() {
+                theme.provider.load_from_string(&render(&settings, &fonts, &palette::current()));
+            }
+        }
+    });
+    theme
 }
