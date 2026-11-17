@@ -10,8 +10,6 @@ use std::rc::Rc;
 use std::thread;
 use std::time::Duration;
 use velatura_core::application_runtime::ApplicationRuntime;
-use velatura_core::niri_session::NiriSessionEvent;
-use velatura_core::ui::gtk_event_bridge::GtkEventBridge;
 
 const APPLICATION_ID: &str = "io.github.pxdritz.velatura";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -30,6 +28,7 @@ fn main() -> ExitCode {
         }
         Some("stop") => stop_application(),
         Some("restart") => restart_application(),
+        Some("internal") => internal_command(args.collect::<Vec<_>>()),
         Some("ipc") => unavailable_command("ipc", args.collect::<Vec<_>>().join(" ")),
         Some(command) if is_product_command(command) => {
             unavailable_command(command, args.collect::<Vec<_>>().join(" "))
@@ -70,7 +69,9 @@ fn print_help() {
            complete [palavras...]\n\n\
          O catálogo está disponível, mas os comandos de domínio/IPC ainda\n\
          precisam ser conectados aos serviços nativos. Nenhum deles chama\n\
-         nem encaminha comandos ao Quickshell legado."
+         nem encaminha comandos ao Quickshell legado.\n\n\
+         uso interno (chamado pelo próprio shell, não por pessoas):\n\
+           internal clipboard-store    armazena a entrada do watcher de clipboard"
     );
 }
 
@@ -113,6 +114,24 @@ fn unavailable_command(command: &str, arguments: String) -> ExitCode {
     ExitCode::from(2)
 }
 
+/// Subcommands reserved for the shell's own machinery. `clipboard-store` is
+/// the process `wl-paste --watch` spawns: it never talks to GTK.
+fn internal_command(arguments: Vec<String>) -> ExitCode {
+    match arguments.first().map(String::as_str) {
+        Some("clipboard-store") => {
+            ExitCode::from(velatura_core::services::clipboard::run_store_subcommand() as u8)
+        }
+        Some(other) => {
+            eprintln!("{{\"error\":\"subcomando interno desconhecido: {other}\"}}");
+            ExitCode::from(2)
+        }
+        None => {
+            eprintln!("{{\"error\":\"uso: velatura internal <clipboard-store>\"}}");
+            ExitCode::from(2)
+        }
+    }
+}
+
 fn run_application() -> ExitCode {
     let application = Application::builder()
         .application_id(APPLICATION_ID)
@@ -129,86 +148,58 @@ fn run_application() -> ExitCode {
     application.add_action(&quit_action);
 
     let runtime: Rc<RefCell<Option<ApplicationRuntime>>> = Rc::default();
-    let runtime_for_activate = Rc::clone(&runtime);
-    let event_bridge: Rc<RefCell<Option<GtkEventBridge>>> = Rc::default();
-    let bridge_for_activate = Rc::clone(&event_bridge);
+    let shell: Rc<RefCell<Option<Rc<velatura_core::ui::Shell>>>> = Rc::default();
 
-    application.connect_activate(move |app| {
-        if let Some(window) = app.windows().first() {
-            window.present();
-            return;
-        }
+    {
+        let runtime = Rc::clone(&runtime);
+        let shell = Rc::clone(&shell);
+        application.connect_activate(move |_app| {
+            if runtime.borrow().is_some() {
+                return;
+            }
 
-        let startup = if runtime_for_activate.borrow().is_none() {
-            match ApplicationRuntime::start() {
-                Ok(started) => {
-                    *runtime_for_activate.borrow_mut() = Some(started);
-                    Ok(())
+            let startup = if runtime.borrow().is_none() {
+                match ApplicationRuntime::start() {
+                    Ok(started) => {
+                        *runtime.borrow_mut() = Some(started);
+                        Ok(())
+                    }
+                    Err(error) => Err(error.to_string()),
                 }
-                Err(error) => Err(error.to_string()),
+            } else {
+                Ok(())
+            };
+
+            match startup {
+                Ok(()) => {
+                    let session = runtime
+                        .borrow()
+                        .as_ref()
+                        .expect("runtime must exist after successful startup")
+                        .session();
+                    *shell.borrow_mut() = Some(velatura_core::ui::Shell::start(_app, session));
+                }
+                Err(error) => {
+                    eprintln!(
+                        "{{\"error\":\"falha ao iniciar o backend: {}\"}}",
+                        json_escape(&error)
+                    );
+                    _app.quit();
+                }
             }
-        } else {
-            Ok(())
-        };
+        });
+    }
 
-        if let Some(display) = gtk4::gdk::Display::default() {
-            let _provider = velatura_core::ui::theme::install(
-                &display,
-                &velatura_core::ui::theme::VisualTheme::default(),
-            );
-        }
-
-        let window = match startup {
-            Ok(()) => {
-                let runtime_ref = runtime_for_activate.borrow();
-                let backend = runtime_ref
-                    .as_ref()
-                    .expect("runtime must exist after successful startup");
-                velatura_core::ui::bootstrap::build_bootstrap_window_with_snapshot(
-                    app,
-                    backend.monitor_count(),
-                    backend.session().refresh_handle(),
-                    &backend.snapshot(),
-                )
+    {
+        let runtime = Rc::clone(&runtime);
+        let shell = Rc::clone(&shell);
+        application.connect_shutdown(move |_| {
+            shell.borrow_mut().take();
+            if let Some(mut backend) = runtime.borrow_mut().take() {
+                backend.shutdown();
             }
-            Err(error) => velatura_core::ui::bootstrap::build_error_window(app, &error),
-        };
-        window.present();
-
-        if bridge_for_activate.borrow().is_none() {
-            let receiver = runtime_for_activate
-                .borrow_mut()
-                .as_mut()
-                .and_then(ApplicationRuntime::take_events);
-            if let Some(receiver) = receiver {
-                let weak_window = window.downgrade();
-                *bridge_for_activate.borrow_mut() = Some(GtkEventBridge::attach(
-                    receiver,
-                    gtk4::glib::MainContext::default(),
-                    move |event| {
-                        if let NiriSessionEvent::SnapshotChanged(snapshot) = event
-                            && let Some(window) = weak_window.upgrade()
-                        {
-                            window.set_title(Some(
-                                &velatura_core::ui::bootstrap::backend_window_title(&snapshot),
-                            ));
-                        }
-                    },
-                ));
-            }
-        }
-    });
-
-    let runtime_for_shutdown = Rc::clone(&runtime);
-    let bridge_for_shutdown = Rc::clone(&event_bridge);
-    application.connect_shutdown(move |_| {
-        if let Some(mut backend) = runtime_for_shutdown.borrow_mut().take() {
-            backend.shutdown();
-        }
-        if let Some(mut bridge) = bridge_for_shutdown.borrow_mut().take() {
-            bridge.join();
-        }
-    });
+        });
+    }
 
     // `run` is our own CLI subcommand, not a file to be opened by GApplication.
     // Pass only argv[0] to GTK so positional CLI arguments are not re-parsed as files.

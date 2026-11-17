@@ -15,3 +15,8 @@ pub mod services;
 pub mod application_runtime;
 #[cfg(feature = "gdk4-observer")]
 pub mod gdk_monitor_observer;
+
+// Frontend nativo, re-portado a partir do QML original; a primeira fatia
+// (glm-made-things/) segue arquivada e fora do build.
+#[cfg(feature = "gtk-app")]
+pub mod ui;
