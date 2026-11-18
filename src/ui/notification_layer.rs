@@ -98,12 +98,6 @@ impl NotificationLayer {
         }
     }
 
-    /// Takes the current notification off the island without reporting an
-    /// action to its application, matching `NotificationService.dismiss()`.
-    pub fn dismiss(&self) {
-        self.service.dismiss();
-    }
-
     /// Focuses the application's window: the one whose app id is the
     /// notification's app name (notifications carry no window).
     fn focus_app(session: &NiriSession, app: &str) {

@@ -18,11 +18,9 @@ direito, pills de workspace fora do estilo, transparência incorreta).
 | `layer.rs` | Helpers gtk4-layer-shell |
 | `theme.rs` | Tokens + CSS |
 
-Os arquivos desta primeira tentativa continuam **fora do build**. O `src/ui/`
-foi removido na revisão de 16/11/2026; commits posteriores recomeçaram um
-re-port parcial em `src/ui/`, que ainda precisa ser comparado ao original.
-Este arquivo descreve somente os defeitos da implementação arquivada. Não é
-um retrato do build ou dos testes atuais.
+Os arquivos estão **fora do build**; o `src/ui/` foi removido e `main.rs`
+roda o runtime sem UI. O backend (`src/services/`, sessão Niri, runtime)
+continua na árvore e os 56 testes seguem valendo.
 
 ## Estado técnico do que está aqui
 

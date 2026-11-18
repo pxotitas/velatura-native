@@ -12,9 +12,9 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Multi-monitor | shell.qml, services/MonitorService.qml | AUDITED | hotplug, outputs e ilha live |
 | Shell surface composition | shell.qml | AUDITED | variants por output, handover live, wiring de Settings/Polkit/Lock/Capture/IPC |
 | Bar reserve surface | bar/BarReserve.qml | AUDITED | exclusive zone estável, zen e ausência de input |
-| Bar root + modules | bar/Bar.qml, bar/BarReserve.qml, bar/modules/*, IslandRest/Summary, OSD/Notification layers | IN PROGRESS | GTK tem superfície por monitor, reserva, zonas de workspaces/launcher, cápsula com relógio e notificação; quatro estilos, 22 módulos, tray, activity/glance e comparação runtime pendentes |
-| Dynamic Island host + panels | bar/widgets/DynamicIsland.qml, bar/island/*, src/ui/island.rs, src/ui/capsule.rs | IN PROGRESS | GTK renderiza repouso/relógio, OSD e notificação com morph; summary, 26 host panel IDs, detail routes, sizing, hover/dwell, keyboard focus, loading/empty/error, integração de ações e comparação visual pendentes. A primeira fatia foi arquivada (D-011); o re-port parcial foi retomado nos commits 0eeaa45–fa62b17 |
-| Island state arbitration | bar/island/IslandState.qml, src/services/island_state.rs, src/ui/island.rs | IN PROGRESS | reducer arbitra prioridade, OSD de 1800 ms e handover; GTK recebe eventos OSD pelo host, mas os providers de áudio/brilho/bateria ainda não estão ligados; hover/dwell do summary, integração completa de painel e validação pendentes |
+| Bar root + modules | bar/Bar.qml, bar/BarReserve.qml, bar/modules/*, IslandRest/Summary, OSD/Notification layers | AUDITED | quatro estilos, masks, 22 módulos, activity/glance, workspaces e tray; runtime/screenshots pendentes |
+| Dynamic Island host + panels | bar/widgets/DynamicIsland.qml, bar/island/* | AUDITED | 26 host panel IDs (appearance/palette share component) + detail routes, priority, sizing, hover/dwell, keyboard focus, loading/empty/error and action flows. Primeira implementação nativa (src/ui) reprovada na validação visual e arquivada em glm-made-things/ (D-011); re-port a partir do QML original pendente |
+| Island state arbitration | bar/island/IslandState.qml | AUDITED | prioridade panel/notification/OSD/summary/modules, timeout, handover e dismiss |
 
 
 | Niri IPC state/events/actions + outputs | services/NiriService.qml, services/MonitorService.qml, scripts/monitors.py; src/niri.rs, src/niri_process.rs, src/niri_actions.rs, src/niri_outputs.rs, src/niri_session.rs, src/gdk_monitor_observer.rs, src/application_runtime.rs, src/ui/gtk_event_bridge.rs | IN PROGRESS | Snapshot atômico revisionado, bridge sem polling até main context, matching GDK↔Niri por connector/geometry, disconnect explicitado; permanecem testes físicos de hotplug/geometry e validação real de reconnect |
@@ -27,7 +27,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Module catalogue backend | services/ModuleService.qml | AUDITED | availability, glyph/value, subscriptions, panel state e glance |
 | Module registry / shared chip | bar/modules/Module.qml, ChipFace.qml | AUDITED | 22 IDs, compact/detail dispatch, shared chip metrics, ring/value reveal |
 | Sample bar modules | bar/modules/{Clock,Volume,Network,Battery}Module.qml, bar/island/DetailFace.qml | AUDITED | clock precision, audio streams/outputs, network status, battery health, special detail routing |
-| Bar module UI | bar/modules/*, bar/island/{IslandRest,IslandSummary,DetailFace}.qml, src/ui/zone.rs | IN PROGRESS | workspaces e relógio têm UI GTK; launcher chip ainda depende de painel/ação conectados; outros 21 módulos, activity/glance, lifecycle e comparação visual/runtime pendentes |
+| Bar module UI | bar/modules/*, bar/island/{IslandRest,IslandSummary,DetailFace}.qml | AUDITED | 22 module contracts, shared chip, activity/glance, lifecycle and special detail routing; visual/runtime parity pending |
 | Controls domain backend | services/ControlsService.qml | AUDITED | 15 doors, 18 toggles, block catalogue, grid, collisions e persistence |
 | Control center UI | bar/island/ControlsPanel.qml, controls/* | AUDITED | 16 block faces, toggles pagination, card actions, notifications, session and shared cards |
 | Control center grid/editing | bar/island/ControlsPanel.qml, controls/* | AUDITED | grid, all 16 block faces, add/remove/drag/resize, inspector, tray, top row and destructive confirmation |
@@ -55,7 +55,7 @@ AUDITED significa fonte e comportamento lidos/documentados; não significa imple
 | Colour picker backend | services/PickerService.qml | AUDITED | hyprpicker probe, settle/cancel, hex validation e wl-copy |
 | Recorder backend | services/RecorderService.qml, scripts/record.py | AUDITED | lifecycle, encoder fallback, áudio e recuperação após reload |
 | Polkit agent | services/PolkitService.qml | AUDITED | agent registration, PAM flow, retry e fallback |
-| Notifications / OSD | services/NotificationService.qml, OsdService.qml, src/services/notifications.rs, src/ui/osd_layer.rs | IN PROGRESS | servidor freedesktop, ações, histórico e timeouts critical/sender respeitam o original; OSD GTK recebe eventos tipados e expira em 1800 ms; faltam produtores de áudio/brilho/bateria, debounce/supressão, timeout configurável e validação runtime |
+| Notifications / OSD | services/NotificationService.qml, OsdService.qml | AUDITED | freedesktop server, OSD aggregation, debounce e DND |
 | Audio | services/AudioService.qml | AUDITED | volume, mute, sinks, sources |
 | Bluetooth | services/BluetoothService.qml | AUDITED | dispositivos, scan, conexão |
 | Network | services/NetworkService.qml, scripts/network.py | AUDITED | Wi-Fi, conexões, scan, senha e status |

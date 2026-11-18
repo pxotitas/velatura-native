@@ -2,8 +2,9 @@
 //! layer, this sizes the capsule for it, swaps the content with a short
 //! cross-fade and animates the shape on the island's own clock.
 //!
-//! Layers rendered so far: modules (the clock), OSD and notification.
-//! Summary and panel routes still require their native providers and widgets.
+//! Layers with content so far: modules (the clock) and notification. The
+//! others (summary, OSD, panels) are sized when their content is ported, so
+//! the island never morphs into an empty shape.
 
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
@@ -14,13 +15,10 @@ use super::capsule::Capsule;
 use super::clock;
 use super::motion::{Curve, Tween};
 use super::notification_layer::NotificationLayer;
-use super::osd_layer::OsdLayer;
 use super::settings::Settings;
 use super::tokens;
 use crate::niri_session::NiriSession;
-use crate::services::island_state::{
-    IslandState, Layer, TransientEvent, World, TRANSIENT_DURATION_MS,
-};
+use crate::services::island_state::{IslandState, Layer, World};
 use crate::services::notifications::{NotificationService, Toast, Urgency};
 
 pub struct Island {
@@ -34,8 +32,6 @@ pub struct Island {
     hovered: Cell<bool>,
     stack: gtk4::Stack,
     notification: NotificationLayer,
-    osd: OsdLayer,
-    osd_expiry: TimerSlot,
     toast: RefCell<Option<Toast>>,
     changed: RefCell<Option<Box<dyn Fn()>>>,
 }
@@ -44,23 +40,6 @@ struct LayerSize {
     width: i32,
     height: i32,
     padding: i32,
-}
-
-/// A replaceable one-shot source. Its callback clears the slot before GLib
-/// destroys the source, so cancellation never removes an already-fired ID.
-#[derive(Clone, Default)]
-struct TimerSlot(Rc<RefCell<Option<gtk4::glib::SourceId>>>);
-
-impl TimerSlot {
-    fn cancel(&self) {
-        if let Some(source) = self.0.borrow_mut().take() {
-            source.remove();
-        }
-    }
-
-    fn clear(&self) {
-        self.0.borrow_mut().take();
-    }
 }
 
 impl Island {
@@ -83,8 +62,6 @@ impl Island {
         stack.add_named(&clock::build(&settings), Some("modules"));
         let notification = NotificationLayer::new(service, session);
         stack.add_named(&notification.widget, Some("notification"));
-        let osd = OsdLayer::new(&settings);
-        stack.add_named(&osd.widget, Some("osd"));
 
         let island = Rc::new_cyclic(|weak: &Weak<Island>| {
             let tween = |initial: f64| {
@@ -106,8 +83,6 @@ impl Island {
                 hovered: Cell::new(false),
                 stack: stack.clone(),
                 notification,
-                osd,
-                osd_expiry: TimerSlot::default(),
                 toast: RefCell::new(None),
                 changed: RefCell::new(None),
             }
@@ -166,59 +141,7 @@ impl Island {
     /// Only the screen that is live arbitrates; the others stay at rest.
     pub fn set_active(&self, active: bool) {
         self.state.borrow_mut().set_active(active);
-        if !active {
-            self.osd_expiry.cancel();
-        }
         self.sync_layer();
-    }
-
-    /// Opens a panel on the live island and dismisses the current toast, as
-    /// the original does when a panel takes over. Panel content is supplied
-    /// by the UI host as those routes are ported.
-    pub fn open_panel(&self, panel: &str) {
-        let dismiss_notification = self.state.borrow_mut().open(panel, self.world.get());
-        if self.state.borrow().expanded() {
-            self.osd_expiry.cancel();
-        }
-        if dismiss_notification {
-            self.notification.dismiss();
-        }
-        self.sync_layer();
-    }
-
-    pub fn close_panel(&self) {
-        self.state.borrow_mut().close();
-        self.sync_layer();
-    }
-
-    /// Receives a real OSD event from a native service adapter. The event is
-    /// dropped when this island is inactive or a panel currently owns it.
-    pub fn request_osd(self: &Rc<Self>, event: TransientEvent) {
-        let now = (gtk4::glib::monotonic_time().max(0) as u64) / 1000;
-        self.state.borrow_mut().request_osd(now, event);
-        let Some(current) = self.state.borrow().transient().cloned() else {
-            return;
-        };
-        self.osd.set_event(&current);
-        self.sync_layer();
-
-        self.osd_expiry.cancel();
-        let slot = self.osd_expiry.clone();
-        let weak = Rc::downgrade(self);
-        let source = gtk4::glib::timeout_add_local(
-            std::time::Duration::from_millis(TRANSIENT_DURATION_MS),
-            move || {
-                slot.clear();
-                if let Some(island) = weak.upgrade() {
-                    let now = (gtk4::glib::monotonic_time().max(0) as u64) / 1000;
-                    if island.state.borrow_mut().tick(now) {
-                        island.sync_layer();
-                    }
-                }
-                gtk4::glib::ControlFlow::Break
-            },
-        );
-        *self.osd_expiry.0.borrow_mut() = Some(source);
     }
 
     /// `NotificationService.current` reaching this island.
@@ -272,11 +195,6 @@ impl Island {
                 },
                 None => rest,
             },
-            Layer::Osd => LayerSize {
-                width: 260,
-                height: self.settings.bar_height,
-                padding: 10,
-            },
             _ => rest,
         }
     }
@@ -310,11 +228,7 @@ impl Island {
             size.padding,
             size.padding + notch_half,
         );
-        let page = match layer {
-            Layer::Notification => "notification",
-            Layer::Osd => "osd",
-            _ => "modules",
-        };
+        let page = if layer == Layer::Notification { "notification" } else { "modules" };
         if self.stack.visible_child_name().as_deref() != Some(page) {
             self.stack.set_visible_child_name(page);
         }
@@ -335,11 +249,5 @@ impl Island {
         if let Some(changed) = self.changed.borrow().as_ref() {
             changed();
         }
-    }
-}
-
-impl Drop for Island {
-    fn drop(&mut self) {
-        self.osd_expiry.cancel();
     }
 }

@@ -821,8 +821,6 @@ Esta seção fecha os comandos de domínio descobertos nos consumidores visuais.
 - LauncherCommand precisa cobrir SetQuery, SetMode, MoveSelection, ActivateResult{modifiers}, DeleteClipboardEntry e StepEmojiGroup/StepEmojiTone; modo e query podem ser estado de sessão, não settings persistentes.
 - PanelCommand cobre Open/Close/Toggle, SetPage, Back/Forward, mas focus/loader state permanece na camada UI. A troca de painel deve respeitar handover da ilha e priorizar auth/notification/OSD como definido em UI_SURFACE_AUDIT.md.
 - NotificationCommand inclui InvokeAction{notification_id, action_id}, Dismiss, ClearHistory; ação default só existe enquanto notification ativa. Histórico não deve expor ação executável depois de fechado.
-- Timeout de notificação segue `NotificationService.timeoutFor`: critical não expira automaticamente; timeout positivo do emissor é limitado a 15000 ms; sem timeout do emissor usa `SettingsService.notificationTimeout`. A implementação Rust restaura as duas primeiras regras, mas ainda usa fallback fixo de 5000 ms até conectar Settings; não marcar paridade completa.
-- `TransientEvent { icon, label, progress }` é a entrada tipada do OSD para a UI: `progress < 0` omite a barra; valores restantes são limitados a `[0, 1]`; o reducer descarta eventos com painel aberto/inactive e expira em 1800 ms. `Shell::request_osd` distribui pelos outputs e só a ilha live arbitra. Providers nativos de Audio/Brightness/Battery ainda precisam emitir esses eventos com debounce e supressão equivalentes a `OsdService.qml`.
 - TrayMenu actions usam opaque DBus menu node/action IDs; nunca shell command string.
 
 ### Screen time / games / pet / controls

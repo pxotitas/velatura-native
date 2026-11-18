@@ -10,7 +10,6 @@ pub mod fillet;
 pub mod island;
 pub mod motion;
 pub mod notification_layer;
-pub mod osd_layer;
 pub mod palette;
 pub mod settings;
 pub mod surface;
@@ -27,7 +26,6 @@ use bar::Bar;
 use settings::Settings;
 
 use crate::niri_session::{NiriSession, NiriSessionEvent, NiriSessionSnapshot};
-use crate::services::island_state::TransientEvent;
 use crate::services::notifications::{NotificationEvent, NotificationService};
 
 /// Owns every bar surface and keeps them in step with the monitors.
@@ -78,14 +76,6 @@ impl Shell {
             }
         });
         shell
-    }
-
-    /// Delivers one native OSD request to the per-output islands. Their own
-    /// live-state arbitration ensures exactly one visible layer.
-    pub fn request_osd(&self, event: TransientEvent) {
-        for bar in self.bars.borrow().iter() {
-            bar.island().request_osd(event.clone());
-        }
     }
 
     /// One bar per monitor: created on hotplug, destroyed on removal.
