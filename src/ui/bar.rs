@@ -3,7 +3,6 @@
 
 use gtk4::gdk;
 use gtk4::prelude::*;
-use gtk4_layer_shell::{KeyboardMode, LayerShell};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -11,10 +10,10 @@ use super::fillet::Fillet;
 use super::island::Island;
 use super::settings::Settings;
 use super::zone::Zone;
-use super::{surface, tokens};
 use crate::niri_session::{NiriSession, NiriSessionSnapshot};
 use crate::services::island_state::Layer;
 use crate::services::notifications::NotificationService;
+use super::{surface, tokens};
 
 pub struct Bar {
     pub window: gtk4::ApplicationWindow,
@@ -29,6 +28,7 @@ impl Bar {
         monitor: &gdk::Monitor,
         settings: Rc<Settings>,
         session: Arc<NiriSession>,
+        open_panel: Rc<dyn Fn(&str)>,
         notifications: Rc<NotificationService>,
     ) -> Self {
         let window = gtk4::ApplicationWindow::new(app);
@@ -37,16 +37,7 @@ impl Bar {
         let stage = gtk4::Fixed::new();
         window.set_child(Some(&stage));
 
-        let island = Island::new(
-            Rc::clone(&settings),
-            true,
-            Rc::clone(&notifications),
-            Arc::clone(&session),
-        );
-        let open_panel: Rc<dyn Fn(&str)> = {
-            let island = Rc::clone(&island);
-            Rc::new(move |panel: &str| island.open_panel(panel))
-        };
+        let island = Island::new(Rc::clone(&settings), true, notifications, Arc::clone(&session));
         let fillets = [Fillet::new(true), Fillet::new(false)];
         stage.put(&island.capsule, 0.0, 0.0);
         for fillet in &fillets {
@@ -54,20 +45,9 @@ impl Bar {
             fillet.set_visible(settings.notched());
         }
 
-        let output = monitor
-            .connector()
-            .map(|name| name.to_string())
-            .unwrap_or_default();
+        let output = monitor.connector().map(|name| name.to_string()).unwrap_or_default();
         let zones: [Option<Rc<Zone>>; 2] = ["left", "right"].map(|side| {
-            Zone::new(
-                &settings,
-                side,
-                &output,
-                Arc::clone(&session),
-                Rc::clone(&notifications),
-                Rc::clone(&open_panel),
-            )
-            .map(|zone| {
+            Zone::new(&settings, side, &output, Arc::clone(&session), Rc::clone(&open_panel)).map(|zone| {
                 stage.put(zone.widget(), 0.0, 0.0);
                 Rc::new(zone)
             })
@@ -78,27 +58,10 @@ impl Bar {
             let (stage, island, window) = (stage.clone(), Rc::clone(&island), window.clone());
             let settings = Rc::clone(&settings);
             let zones = zones.clone();
-            let keyboard_panel = std::cell::Cell::new(false);
             move || {
-                let enable_keyboard = island.keyboard_panel_open();
-                if keyboard_panel.replace(enable_keyboard) != enable_keyboard {
-                    window.set_keyboard_mode(if enable_keyboard {
-                        KeyboardMode::OnDemand
-                    } else {
-                        KeyboardMode::None
-                    });
-                    if enable_keyboard {
-                        island.capsule.grab_focus();
-                    }
-                }
-
                 let (width, height) = island.size();
                 let left = (screen_width - width) / 2;
-                let top = if settings.notched() {
-                    0
-                } else {
-                    settings.bar_margin
-                };
+                let top = if settings.notched() { 0 } else { settings.bar_margin };
                 stage.move_(&island.capsule, f64::from(left), f64::from(top));
 
                 let color = island.surface_color().gdk();
@@ -111,11 +74,7 @@ impl Bar {
 
                 // Grouped: the sides hug the island and give way when it takes
                 // the band; the lane is centred on the island's rest line.
-                let lane = if settings.notched() {
-                    settings.bar_margin / 2
-                } else {
-                    settings.bar_margin
-                };
+                let lane = if settings.notched() { settings.bar_margin / 2 } else { settings.bar_margin };
                 let away = island.layer() != Layer::Modules;
                 if let Some(zone) = &zones[0] {
                     let x = left - tokens::CAPSULE_SPACING - zone.width();
@@ -133,10 +92,7 @@ impl Bar {
                 let band = settings.bar_margin + settings.bar_height + 8;
                 surface::set_input_rects(
                     &window,
-                    &[
-                        (0, 0, screen_width, band),
-                        (left, 0, width, top + height + 12),
-                    ],
+                    &[(0, 0, screen_width, band), (left, 0, width, top + height + 12)],
                 );
             }
         };
@@ -169,12 +125,7 @@ impl Bar {
         island.sync_layer();
         window.present();
 
-        Self {
-            window,
-            connector: output,
-            island,
-            zones,
-        }
+        Self { window, connector: output, island, zones }
     }
 
     pub fn update(&self, snapshot: &NiriSessionSnapshot) {
@@ -185,12 +136,6 @@ impl Bar {
 
     pub fn island(&self) -> &Rc<Island> {
         &self.island
-    }
-
-    pub fn refresh_notification_chips(&self) {
-        for zone in self.zones.iter().flatten() {
-            zone.refresh_notifications();
-        }
     }
 }
 
@@ -214,8 +159,6 @@ pub fn monitors() -> Vec<gdk::Monitor> {
 
 pub fn watch_monitors(callback: impl Fn() + 'static) {
     if let Some(display) = gdk::Display::default() {
-        display
-            .monitors()
-            .connect_items_changed(move |_, _, _, _| callback());
+        display.monitors().connect_items_changed(move |_, _, _, _| callback());
     }
 }

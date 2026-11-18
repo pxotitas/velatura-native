@@ -10,7 +10,6 @@ pub mod fillet;
 pub mod island;
 pub mod motion;
 pub mod notification_layer;
-pub mod notification_panel;
 pub mod osd_layer;
 pub mod palette;
 pub mod settings;
@@ -60,16 +59,10 @@ impl Shell {
         // Niri state reaches the bars from the session event stream.
         let weak = Rc::downgrade(&shell);
         gtk4::glib::timeout_add_local(std::time::Duration::from_millis(16), move || {
-            let Some(shell) = weak.upgrade() else {
-                return gtk4::glib::ControlFlow::Break;
-            };
+            let Some(shell) = weak.upgrade() else { return gtk4::glib::ControlFlow::Break };
             while let Ok(event) = shell.session.try_recv() {
                 if let NiriSessionEvent::SnapshotChanged(snapshot) = event {
-                    shell
-                        .bars
-                        .borrow()
-                        .iter()
-                        .for_each(|bar| bar.update(&snapshot));
+                    shell.bars.borrow().iter().for_each(|bar| bar.update(&snapshot));
                     shell.follow_focus(&snapshot);
                 }
             }
@@ -99,40 +92,22 @@ impl Shell {
     fn sync(&self) {
         let monitors = bar::monitors();
         let name = |monitor: &gtk4::gdk::Monitor| {
-            monitor
-                .connector()
-                .map(|name| name.to_string())
-                .unwrap_or_default()
+            monitor.connector().map(|name| name.to_string()).unwrap_or_default()
         };
         // Keep reservations independently owned from the visible bars, as
         // the original BarReserve.qml does. This prevents layout jumps when
         // a bar surface is recreated during monitor synchronization.
         let mut reserves = self.reserves.borrow_mut();
-        reserves.retain(|reserve| {
-            monitors
-                .iter()
-                .any(|monitor| name(monitor) == reserve.connector)
-        });
+        reserves.retain(|reserve| monitors.iter().any(|monitor| name(monitor) == reserve.connector));
         for monitor in &monitors {
-            if !reserves
-                .iter()
-                .any(|reserve| reserve.connector == name(monitor))
-            {
-                reserves.push(surface::Reservation::new(
-                    &self.app,
-                    monitor,
-                    self.settings.bar_reserve(),
-                ));
+            if !reserves.iter().any(|reserve| reserve.connector == name(monitor)) {
+                reserves.push(surface::Reservation::new(&self.app, monitor, self.settings.bar_reserve()));
             }
         }
         drop(reserves);
 
         let mut bars = self.bars.borrow_mut();
-        bars.retain(|bar| {
-            monitors
-                .iter()
-                .any(|monitor| name(monitor) == bar.connector)
-        });
+        bars.retain(|bar| monitors.iter().any(|monitor| name(monitor) == bar.connector));
         for monitor in &monitors {
             if !bars.iter().any(|bar| bar.connector == name(monitor)) {
                 let bar = Bar::new(
@@ -140,6 +115,7 @@ impl Shell {
                     monitor,
                     Rc::clone(&self.settings),
                     Arc::clone(&self.session),
+                    Rc::new(|_panel: &str| {}),
                     Rc::clone(&self.notifications),
                 );
                 bar.update(&self.session.snapshot());
@@ -158,32 +134,20 @@ impl Shell {
         let bars = self.bars.borrow();
         match event {
             NotificationEvent::Arrived(toast) => {
-                bars.iter()
-                    .for_each(|bar| bar.island().set_notification(Some(toast.clone())));
+                bars.iter().for_each(|bar| bar.island().set_notification(Some(toast.clone())));
             }
             NotificationEvent::Expired(id) | NotificationEvent::Closed(id) => {
-                for bar in bars
-                    .iter()
-                    .filter(|bar| bar.island().notification_id() == Some(id))
-                {
+                for bar in bars.iter().filter(|bar| bar.island().notification_id() == Some(id)) {
                     bar.island().set_notification(None);
                 }
             }
             _ => {}
         }
-        for bar in bars.iter() {
-            bar.island().refresh_notification_panel();
-            bar.refresh_notification_chips();
-        }
     }
 
     /// The live island is the one on the focused output (`Island.active`).
     fn follow_focus(&self, snapshot: &NiriSessionSnapshot) {
-        let focused = snapshot
-            .niri
-            .focused_workspace_id
-            .as_ref()
-            .and_then(|id| id.as_i64());
+        let focused = snapshot.niri.focused_workspace_id.as_ref().and_then(|id| id.as_i64());
         let output = snapshot
             .niri
             .workspaces
