@@ -2,9 +2,9 @@
 //! The workspaces get a capsule of their own; chips share one until a
 //! `split`. A group with nothing present is not drawn, as in the original.
 //!
-//! Ported modules so far: `workspaces`, `launcher`. The others in this
-//! machine's layout (`tray`, `network`, `bluetooth`, `volume`, `battery`)
-//! have no backend yet and are left out rather than drawn as dead chips.
+//! Ported modules so far: `workspaces`, `launcher`, and the first system
+//! detail panels (`network`, `bluetooth`, `volume`, `battery`). Tray remains
+//! pending until its DBus model and context menus are ported.
 
 use gtk4::prelude::*;
 use std::rc::Rc;
@@ -25,6 +25,11 @@ pub struct Zone {
 fn button_glyph(id: &str) -> Option<&'static str> {
     match id {
         "launcher" => Some("\u{f0349}"),
+        // Material Design Icons used by the original Quickshell modules.
+        "network" => Some("\u{f01ee}"),
+        "bluetooth" => Some("\u{f00af}"),
+        "volume" => Some("\u{f057e}"),
+        "battery" => Some("\u{f0079}"),
         _ => None,
     }
 }
@@ -37,7 +42,11 @@ impl Zone {
         session: Arc<NiriSession>,
         open_panel: Rc<dyn Fn(&str)>,
     ) -> Option<Self> {
-        let entries = if side == "left" { &settings.bar_left } else { &settings.bar_right };
+        let entries = if side == "left" {
+            &settings.bar_left
+        } else {
+            &settings.bar_right
+        };
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, tokens::CAPSULE_SPACING);
         row.set_height_request(settings.bar_height);
         let mut strip = None;
@@ -47,11 +56,21 @@ impl Zone {
         let flush = |chips: &mut Vec<&str>, row: &gtk4::Box, empty: &mut bool| {
             // One button alone is its own capsule; shared capsules arrive
             // with the first non-button chip.
-            let present: Vec<&str> = chips.drain(..).filter(|id| button_glyph(id).is_some()).collect();
-            if let [id] = present.as_slice() {
-                let panel = (*id).to_string();
+            let present: Vec<&str> = chips
+                .drain(..)
+                .filter(|id| button_glyph(id).is_some())
+                .collect();
+            for id in present {
+                let panel = match id {
+                    "network" => "wifi",
+                    "volume" => "sound",
+                    other => other,
+                }
+                .to_string();
                 let open = Rc::clone(&open_panel);
-                let chip = ButtonChip::new(settings, button_glyph(id).unwrap_or(""), move || open(&panel));
+                let chip = ButtonChip::new(settings, button_glyph(id).unwrap_or(""), move || {
+                    open(&panel)
+                });
                 row.append(&chip.widget);
                 *empty = false;
             }

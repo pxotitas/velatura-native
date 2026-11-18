@@ -53,7 +53,11 @@ fn parse(hex: &Option<String>) -> Option<Rgba> {
         return None;
     }
     let value = u32::from_str_radix(hex, 16).ok()?;
-    Some(Rgba::hex((value >> 16) as u8, (value >> 8) as u8, value as u8))
+    Some(Rgba::hex(
+        (value >> 16) as u8,
+        (value >> 8) as u8,
+        value as u8,
+    ))
 }
 
 thread_local! {

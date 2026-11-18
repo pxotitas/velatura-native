@@ -65,6 +65,10 @@ impl ResultList {
         self.entries.borrow().len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.entries.borrow().is_empty()
+    }
+
     /// Replaces the rows; the selection goes back to the top, so Enter always
     /// runs the first result.
     pub fn set_entries(self: &Rc<Self>, entries: Vec<Entry>) {
@@ -109,9 +113,12 @@ impl ResultList {
         self.scroll_to(next);
     }
 
+    pub fn selected_entry(&self) -> Option<Entry> {
+        self.entries.borrow().get(self.selected.get()).cloned()
+    }
+
     pub fn run_selected(&self) {
-        let entry = self.entries.borrow().get(self.selected.get()).cloned();
-        if let Some(entry) = entry {
+        if let Some(entry) = self.selected_entry() {
             (self.run)(&entry);
         }
     }
@@ -197,9 +204,23 @@ impl ResultList {
 
     /// The themed icon, or a glyph in a tinted disc when there is none.
     fn badge(entry: &Entry) -> gtk4::Widget {
+        if entry.kind == "clip" {
+            if let Some(file) = entry.file.as_deref() {
+                let path = crate::services::clipboard::payload_path(file);
+                if !path.as_os_str().is_empty() {
+                    let image = gtk4::Image::from_file(path);
+                    image.set_pixel_size(ICON);
+                    image.set_valign(gtk4::Align::Center);
+                    image.add_css_class("launcher-clip-thumb");
+                    return image.upcast();
+                }
+            }
+        }
         let theme = gtk4::gdk::Display::default().map(|d| gtk4::IconTheme::for_display(&d));
         let name = icon_alias(&entry.icon);
-        let has = theme.as_ref().is_some_and(|t| !name.is_empty() && t.has_icon(name));
+        let has = theme
+            .as_ref()
+            .is_some_and(|t| !name.is_empty() && t.has_icon(name));
         if has {
             let image = gtk4::Image::from_icon_name(name);
             image.set_pixel_size(ICON);

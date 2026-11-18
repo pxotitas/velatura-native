@@ -163,11 +163,18 @@ impl Strip {
     }
 
     fn written(&self) -> bool {
-        matches!(self.style().as_str(), "numbers" | "roman" | "kanji" | "greek")
+        matches!(
+            self.style().as_str(),
+            "numbers" | "roman" | "kanji" | "greek"
+        )
     }
 
     fn settings(&self) -> Rc<Settings> {
-        self.imp().settings.borrow().clone().expect("strip has settings")
+        self.imp()
+            .settings
+            .borrow()
+            .clone()
+            .expect("strip has settings")
     }
 
     fn spacing(&self) -> f64 {
@@ -196,7 +203,11 @@ impl Strip {
                 if n < 10 {
                     digits[n.max(0) as usize].to_string()
                 } else {
-                    let tens = if n >= 20 { digits[(n / 10) as usize] } else { "" };
+                    let tens = if n >= 20 {
+                        digits[(n / 10) as usize]
+                    } else {
+                        ""
+                    };
                     format!("{tens}十{}", digits[(n % 10) as usize])
                 }
             }
@@ -222,14 +233,26 @@ impl Strip {
         match self.style().as_str() {
             "bars" => BAR_WIDTH,
             "rings" => RING + 2.0,
-            "dots" => if slot.focused { ACTIVE_WIDTH } else { DOT },
-            _ => self.pill_height().max(slot.glyph_width.get() + 2.0 * GLYPH_PAD),
+            "dots" => {
+                if slot.focused {
+                    ACTIVE_WIDTH
+                } else {
+                    DOT
+                }
+            }
+            _ => self
+                .pill_height()
+                .max(slot.glyph_width.get() + 2.0 * GLYPH_PAD),
         }
     }
 
     fn content_width(&self) -> f64 {
         let state = self.imp().state.borrow();
-        let strip: f64 = state.slots.iter().map(|s| s.mark.value() + self.spacing()).sum();
+        let strip: f64 = state
+            .slots
+            .iter()
+            .map(|s| s.mark.value() + self.spacing())
+            .sum();
         (strip - self.spacing()).max(0.0) + if self.written() { 12.0 } else { 20.0 }
     }
 
@@ -261,7 +284,11 @@ impl Strip {
             let fast = tokens::DURATION_FAST * self.settings().motion();
             for (index, slot) in state.slots.iter().enumerate() {
                 let over = hovered == Some(index);
-                slot.full.animate(f64::from(u8::from(over || slot.focused)), fast, Curve::OutCubic);
+                slot.full.animate(
+                    f64::from(u8::from(over || slot.focused)),
+                    fast,
+                    Curve::OutCubic,
+                );
                 slot.lit.animate(
                     f64::from(u8::from(over || slot.focused || slot.occupied)),
                     fast,
@@ -356,7 +383,8 @@ impl Strip {
             slot.occupied = occupied;
             if written {
                 let text = self.glyph_of(idx);
-                slot.glyph_width.set(f64::from(self.layout_of(&text).pixel_size().0));
+                slot.glyph_width
+                    .set(f64::from(self.layout_of(&text).pixel_size().0));
             }
             let hover = hovered_id == Some(id);
             let mark = self.mark_target(&slot);
@@ -365,11 +393,18 @@ impl Strip {
                 slot.height.jump(self.height_target(&slot));
             } else {
                 slot.mark.animate(mark, medium, curve);
-                slot.height.animate(self.height_target(&slot), medium, curve);
+                slot.height
+                    .animate(self.height_target(&slot), medium, curve);
             }
-            slot.full.animate(f64::from(u8::from(focused || hover)), fast, Curve::OutCubic);
-            slot.lit.animate(f64::from(u8::from(focused || hover || occupied)), fast, Curve::OutCubic);
-            slot.occ.animate(f64::from(u8::from(occupied)), fast, Curve::OutCubic);
+            slot.full
+                .animate(f64::from(u8::from(focused || hover)), fast, Curve::OutCubic);
+            slot.lit.animate(
+                f64::from(u8::from(focused || hover || occupied)),
+                fast,
+                Curve::OutCubic,
+            );
+            slot.occ
+                .animate(f64::from(u8::from(occupied)), fast, Curve::OutCubic);
             next.push(slot);
         }
 
@@ -382,11 +417,18 @@ impl Strip {
                     .iter()
                     .map(|s| s.mark.target() + self.spacing())
                     .sum();
-                (before + self.pad() + self.spacing() / 2.0, state.slots[index].mark.target())
+                (
+                    before + self.pad() + self.spacing() / 2.0,
+                    state.slots[index].mark.target(),
+                )
             });
             if let Some((x, width)) = target {
-                let pill_x = state.pill_x.get_or_insert_with(|| Tween::new(self, x, redraw.clone()));
-                let pill_w = state.pill_w.get_or_insert_with(|| Tween::new(self, width, redraw.clone()));
+                let pill_x = state
+                    .pill_x
+                    .get_or_insert_with(|| Tween::new(self, x, redraw.clone()));
+                let pill_w = state
+                    .pill_w
+                    .get_or_insert_with(|| Tween::new(self, width, redraw.clone()));
                 pill_x.animate(x, medium, curve);
                 pill_w.animate(width, medium, curve);
             }
@@ -398,8 +440,22 @@ impl Strip {
 
     fn height_target(&self, slot: &Slot) -> f64 {
         match self.style().as_str() {
-            "bars" => if slot.focused { 14.0 } else if slot.occupied { 9.0 } else { 5.0 },
-            "rings" => if slot.focused { RING + 2.0 } else { RING },
+            "bars" => {
+                if slot.focused {
+                    14.0
+                } else if slot.occupied {
+                    9.0
+                } else {
+                    5.0
+                }
+            }
+            "rings" => {
+                if slot.focused {
+                    RING + 2.0
+                } else {
+                    RING
+                }
+            }
             _ => DOT,
         }
     }
@@ -431,7 +487,14 @@ impl Strip {
         if written {
             if let (Some(x), Some(w)) = (&state.pill_x, &state.pill_w) {
                 let pill = self.pill_height();
-                fill_round(snapshot, x.value(), mid - pill / 2.0, w.value(), pill, palette.accent);
+                fill_round(
+                    snapshot,
+                    x.value(),
+                    mid - pill / 2.0,
+                    w.value(),
+                    pill,
+                    palette.accent,
+                );
             }
         }
 
@@ -443,7 +506,11 @@ impl Strip {
             let centre = cursor + slot_width / 2.0;
             match style.as_str() {
                 "dots" | "bars" => {
-                    let w = if style == "bars" { BAR_WIDTH } else { (slot_width - spacing).max(0.0) };
+                    let w = if style == "bars" {
+                        BAR_WIDTH
+                    } else {
+                        (slot_width - spacing).max(0.0)
+                    };
                     let h = slot.height.value();
                     let mut color = blend(INDICATOR_DIM, palette.accent, lit);
                     color.3 = (1.0 - 0.45 * occ * (1.0 - full)) as f32;

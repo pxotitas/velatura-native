@@ -293,6 +293,120 @@ pub fn term_for(query: &str) -> &str {
         .trim()
 }
 
+/// Evaluate the arithmetic grammar accepted by LauncherService.qml.
+/// Only decimal numbers, whitespace, parentheses and + - * / % are allowed.
+pub fn evaluate(expression: &str) -> Option<f64> {
+    if expression.is_empty()
+        || !expression.chars().all(|c| {
+            c.is_ascii_digit() || matches!(c, '+' | '-' | '*' | '/' | '%' | '(' | ')' | '.' | ' ')
+        })
+    {
+        return None;
+    }
+    struct Parser<'a> {
+        chars: Vec<char>,
+        at: usize,
+        source: &'a str,
+    }
+    impl Parser<'_> {
+        fn skip(&mut self) {
+            while self
+                .chars
+                .get(self.at)
+                .is_some_and(|c| c.is_ascii_whitespace())
+            {
+                self.at += 1;
+            }
+        }
+        fn take(&mut self, c: char) -> bool {
+            self.skip();
+            if self.chars.get(self.at) == Some(&c) {
+                self.at += 1;
+                true
+            } else {
+                false
+            }
+        }
+        fn expression(&mut self) -> Option<f64> {
+            let mut value = self.term()?;
+            loop {
+                if self.take('+') {
+                    value += self.term()?;
+                } else if self.take('-') {
+                    value -= self.term()?;
+                } else {
+                    break;
+                }
+            }
+            value.is_finite().then_some(value)
+        }
+        fn term(&mut self) -> Option<f64> {
+            let mut value = self.factor()?;
+            loop {
+                if self.take('*') {
+                    value *= self.factor()?;
+                } else if self.take('/') {
+                    value /= self.factor()?;
+                } else if self.take('%') {
+                    value %= self.factor()?;
+                } else {
+                    break;
+                }
+                if !value.is_finite() {
+                    return None;
+                }
+            }
+            Some(value)
+        }
+        fn factor(&mut self) -> Option<f64> {
+            if self.take('+') {
+                return self.factor();
+            }
+            if self.take('-') {
+                return Some(-self.factor()?);
+            }
+            if self.take('(') {
+                let value = self.expression()?;
+                if !self.take(')') {
+                    return None;
+                }
+                return Some(value);
+            }
+            self.skip();
+            let start = self.at;
+            let mut dot = false;
+            while let Some(c) = self.chars.get(self.at) {
+                if c.is_ascii_digit() {
+                    self.at += 1;
+                } else if *c == '.' && !dot {
+                    dot = true;
+                    self.at += 1;
+                } else {
+                    break;
+                }
+            }
+            if start == self.at {
+                return None;
+            }
+            self.source
+                .get(self.char_byte(start)..self.char_byte(self.at))?
+                .parse()
+                .ok()
+        }
+        fn char_byte(&self, index: usize) -> usize {
+            self.chars.iter().take(index).map(|c| c.len_utf8()).sum()
+        }
+    }
+    let mut parser = Parser {
+        chars: expression.chars().collect(),
+        at: 0,
+        source: expression,
+    };
+    let value = parser.expression()?;
+    parser.skip();
+    (parser.at == parser.chars.len() && value.is_finite()).then_some(value)
+}
+
 /// Rank applications for a term, mirroring the original's ordering: name
 /// starts with the term first, then decayed launches plus the favourite
 /// bonus, then dock order between equal favourites, then name.
@@ -509,6 +623,17 @@ mod tests {
         // Alphabetical without byUse.
         let ranked = rank(&apps, "", &history, &[], 0, false, 10);
         assert_eq!(ranked[0].name, "Feeds");
+    }
+
+    #[test]
+    fn calculator_obeys_precedence_parentheses_and_rejects_unsafe_input() {
+        assert_eq!(evaluate("12 * (5 + 1)"), Some(72.0));
+        assert_eq!(evaluate("10 / 4"), Some(2.5));
+        assert_eq!(evaluate("10 % 4"), Some(2.0));
+        assert_eq!(evaluate("-2 + 3"), Some(1.0));
+        assert_eq!(evaluate("1 / 0"), None);
+        assert_eq!(evaluate("1 + process"), None);
+        assert_eq!(evaluate("(1 + 2"), None);
     }
 
     #[test]

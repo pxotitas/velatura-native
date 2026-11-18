@@ -24,6 +24,10 @@ pub struct Settings {
     pub game_mode: bool,
     pub launcher_results: usize,
     pub launcher_order: String,
+    pub clipboard_history: bool,
+    pub clipboard_keep: usize,
+    pub clipboard_images: bool,
+    pub clipboard_wipe_on_lock: bool,
     pub dock_pinned: Vec<String>,
     pub clock_format: String,
     pub clock_shows_seconds: bool,
@@ -62,6 +66,10 @@ impl Default for Settings {
             game_mode: false,
             launcher_results: 9,
             launcher_order: "recent".into(),
+            clipboard_history: true,
+            clipboard_keep: 200,
+            clipboard_images: true,
+            clipboard_wipe_on_lock: false,
             dock_pinned: Vec::new(),
             clock_format: "HH:mm".into(),
             clock_shows_seconds: false,
@@ -114,7 +122,11 @@ impl Settings {
 
     /// Reserved top band, matching Theme.barReserve / BarReserve.qml.
     pub fn bar_reserve(&self) -> i32 {
-        if self.bar_hidden { 0 } else { self.bar_margin + self.bar_height }
+        if self.bar_hidden {
+            0
+        } else {
+            self.bar_margin + self.bar_height
+        }
     }
 
     /// Width of the island at rest, `ModuleService.entry("clock").width`.
@@ -131,7 +143,6 @@ impl Settings {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

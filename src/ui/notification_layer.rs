@@ -4,8 +4,8 @@
 //! accent). More or longer buttons share a row underneath. A click is the
 //! default action, or closes it when there is none; a right click closes it.
 
-use gtk4::prelude::*;
 use gtk4::pango;
+use gtk4::prelude::*;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -35,7 +35,11 @@ impl NotificationLayer {
     pub fn new(service: Rc<NotificationService>, session: Arc<NiriSession>) -> Self {
         let widget = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         widget.set_valign(gtk4::Align::Start);
-        Self { widget, service, session }
+        Self {
+            widget,
+            service,
+            session,
+        }
     }
 
     pub fn set_toast(&self, toast: Option<&Toast>) {
@@ -46,7 +50,11 @@ impl NotificationLayer {
         let critical = toast.urgency == Urgency::Critical;
         let buttons: Vec<(String, String)> = toast.buttons().into_iter().cloned().collect();
         let inline = buttons.len() <= 2
-            && buttons.iter().map(|(_, text)| text.chars().count()).sum::<usize>() <= 20;
+            && buttons
+                .iter()
+                .map(|(_, text)| text.chars().count())
+                .sum::<usize>()
+                <= 20;
 
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, TEXT_GAP);
         row.set_height_request(ROW);
@@ -66,7 +74,9 @@ impl NotificationLayer {
             actions.set_valign(gtk4::Align::Center);
             for (index, (key, label)) in buttons.iter().enumerate() {
                 let (service, id, key) = (Rc::clone(&self.service), toast.id, key.clone());
-                actions.append(&Self::pill(label, index == 0, move || service.invoke_action(id, &key)));
+                actions.append(&Self::pill(label, index == 0, move || {
+                    service.invoke_action(id, &key)
+                }));
             }
             row.append(&actions);
         }
@@ -113,7 +123,11 @@ impl NotificationLayer {
             })
         });
         if let Some(id) = found.and_then(|window| window["id"].as_i64()) {
-            let _ = session.dispatch(["focus-window".to_string(), "--id".to_string(), id.to_string()]);
+            let _ = session.dispatch([
+                "focus-window".to_string(),
+                "--id".to_string(),
+                id.to_string(),
+            ]);
         }
     }
 
@@ -129,10 +143,19 @@ impl NotificationLayer {
 
         let icon = toast.icon.as_str();
         let theme = gtk4::gdk::Display::default().map(|d| gtk4::IconTheme::for_display(&d));
-        let has = |name: &str| theme.as_ref().is_some_and(|t| !name.is_empty() && t.has_icon(name));
-        let stand_in = if critical { "com.github.timecraft.notifier" } else { "cs-notifications" };
+        let has = |name: &str| {
+            theme
+                .as_ref()
+                .is_some_and(|t| !name.is_empty() && t.has_icon(name))
+        };
+        let stand_in = if critical {
+            "com.github.timecraft.notifier"
+        } else {
+            "cs-notifications"
+        };
 
-        let content: gtk4::Widget = if icon.starts_with('/') && std::path::Path::new(icon).exists() {
+        let content: gtk4::Widget = if icon.starts_with('/') && std::path::Path::new(icon).exists()
+        {
             let picture = gtk4::Picture::for_filename(icon);
             picture.set_content_fit(gtk4::ContentFit::Cover);
             picture.upcast()
@@ -144,7 +167,11 @@ impl NotificationLayer {
             image.upcast()
         } else {
             let glyph = gtk4::Label::new(Some(if critical { "\u{f002a}" } else { "\u{f009a}" }));
-            glyph.add_css_class(if critical { "toast-glyph-bad" } else { "toast-glyph" });
+            glyph.add_css_class(if critical {
+                "toast-glyph-bad"
+            } else {
+                "toast-glyph"
+            });
             glyph.upcast()
         };
         face.set_content(Some(&content));
@@ -160,7 +187,10 @@ impl NotificationLayer {
         title.set_ellipsize(pango::EllipsizeMode::End);
         row.append(&title);
         if show_meta {
-            let parts: Vec<&str> = [toast.app_name.as_str(), "now"].into_iter().filter(|p| !p.is_empty()).collect();
+            let parts: Vec<&str> = [toast.app_name.as_str(), "now"]
+                .into_iter()
+                .filter(|p| !p.is_empty())
+                .collect();
             let meta = gtk4::Label::new(Some(&parts.join("  ·  ")));
             meta.add_css_class("toast-meta");
             row.append(&meta);
@@ -186,7 +216,11 @@ impl NotificationLayer {
 
     fn pill(text: &str, first: bool, on_click: impl Fn() + 'static) -> Capsule {
         let label = gtk4::Label::new(Some(text));
-        label.add_css_class(if first { "toast-button-first" } else { "toast-button" });
+        label.add_css_class(if first {
+            "toast-button-first"
+        } else {
+            "toast-button"
+        });
         let (_, natural, _, _) = label.measure(gtk4::Orientation::Horizontal, -1);
         let pill = Capsule::new();
         pill.set_size(natural + BUTTON_PAD, BUTTON_HEIGHT);
@@ -198,7 +232,11 @@ impl NotificationLayer {
             let pill = pill.clone();
             move |mix: f64| {
                 let p = palette::current();
-                let (from, to) = if first { (p.accent, p.accent_hover) } else { (p.surface_hover, p.border) };
+                let (from, to) = if first {
+                    (p.accent, p.accent_hover)
+                } else {
+                    (p.surface_hover, p.border)
+                };
                 pill.set_color(from.mix(to, mix as f32).gdk());
             }
         };
@@ -206,7 +244,9 @@ impl NotificationLayer {
         let hover = Tween::new(&pill, 0.0, paint);
         let motion = gtk4::EventControllerMotion::new();
         let enter = hover.clone();
-        motion.connect_enter(move |_, _, _| enter.animate(1.0, tokens::DURATION_FAST, Curve::OutCubic));
+        motion.connect_enter(move |_, _, _| {
+            enter.animate(1.0, tokens::DURATION_FAST, Curve::OutCubic)
+        });
         let leave = hover.clone();
         motion.connect_leave(move |_| leave.animate(0.0, tokens::DURATION_FAST, Curve::OutCubic));
         pill.add_controller(motion);
@@ -245,15 +285,19 @@ impl NotificationLayer {
                 cell.append(&divider);
             }
             let text = gtk4::Label::new(Some(label));
-            text.add_css_class(if index == 0 { "toast-cell-first" } else { "toast-cell" });
+            text.add_css_class(if index == 0 {
+                "toast-cell-first"
+            } else {
+                "toast-cell"
+            });
             text.set_ellipsize(pango::EllipsizeMode::End);
             text.set_hexpand(true);
             cell.append(&text);
             let (service, key) = (Rc::clone(&self.service), key.clone());
             let click = gtk4::GestureClick::new();
             click.connect_pressed(|gesture, _, _, _| {
-            gesture.set_state(gtk4::EventSequenceState::Claimed);
-        });
+                gesture.set_state(gtk4::EventSequenceState::Claimed);
+            });
             click.connect_released(move |_, _, _, _| service.invoke_action(id, &key));
             cell.add_controller(click);
             cell.set_cursor_from_name(Some("pointer"));

@@ -19,6 +19,7 @@ const FIELD_HEIGHT: i32 = 34;
 pub struct LauncherPanel {
     pub widget: gtk4::Box,
     field: gtk4::Text,
+    refresh: Rc<dyn Fn()>,
 }
 
 impl LauncherPanel {
@@ -66,13 +67,18 @@ impl LauncherPanel {
         widget.append(&results.widget);
 
         let refresh = {
-            let (field, glyph, empty, results) =
-                (field.clone(), glyph.clone(), empty.clone(), Rc::clone(&results));
+            let (field, glyph, empty, results, store_for_refresh) = (
+                field.clone(),
+                glyph.clone(),
+                empty.clone(),
+                Rc::clone(&results),
+                Rc::clone(&store),
+            );
             move || {
                 let query = field.text().to_string();
                 let mode = launcher::mode_for(&query);
                 glyph.set_text(mode.icon);
-                match store.borrow().search(&query) {
+                match store_for_refresh.borrow().search(&query) {
                     Outcome::Entries(entries) => {
                         let none = entries.is_empty();
                         results.set_entries(entries);
@@ -87,30 +93,75 @@ impl LauncherPanel {
                 }
             }
         };
+        let refresh: Rc<dyn Fn()> = Rc::new(refresh);
         refresh();
-        field.connect_changed(move |_| refresh());
+        field.connect_changed({
+            let refresh = Rc::clone(&refresh);
+            move |_| refresh()
+        });
 
         // Keys the field would otherwise keep for itself.
         let keys = gtk4::EventControllerKey::new();
         keys.set_propagation_phase(gtk4::PropagationPhase::Capture);
         keys.connect_key_pressed({
-            let results = Rc::clone(&results);
-            move |_, key, _, _| match key {
-                gtk4::gdk::Key::Down => {
-                    results.step(1);
-                    gtk4::glib::Propagation::Stop
+            let (results, store, refresh, close) = (
+                Rc::clone(&results),
+                Rc::clone(&store),
+                Rc::clone(&refresh),
+                Rc::clone(&close),
+            );
+            move |_, key, _, state| {
+                use gtk4::gdk::ModifierType;
+                match key {
+                    gtk4::gdk::Key::Down => {
+                        results.step(1);
+                        gtk4::glib::Propagation::Stop
+                    }
+                    gtk4::gdk::Key::Up => {
+                        results.step(-1);
+                        gtk4::glib::Propagation::Stop
+                    }
+                    gtk4::gdk::Key::Delete if state.contains(ModifierType::SHIFT_MASK) => {
+                        if let Some(entry) = results
+                            .selected_entry()
+                            .filter(|entry| entry.kind == "clip")
+                        {
+                            store.borrow().forget_clip(&entry.id);
+                            refresh();
+                        }
+                        gtk4::glib::Propagation::Stop
+                    }
+                    gtk4::gdk::Key::Return | gtk4::gdk::Key::KP_Enter
+                        if state
+                            .intersects(ModifierType::SHIFT_MASK | ModifierType::CONTROL_MASK) =>
+                    {
+                        if let Some(entry) = results
+                            .selected_entry()
+                            .filter(|entry| entry.kind == "clip" && entry.file.is_some())
+                        {
+                            store.borrow().open_clip_image(&entry);
+                            close();
+                            gtk4::glib::Propagation::Stop
+                        } else {
+                            gtk4::glib::Propagation::Proceed
+                        }
+                    }
+                    _ => gtk4::glib::Propagation::Proceed,
                 }
-                gtk4::gdk::Key::Up => {
-                    results.step(-1);
-                    gtk4::glib::Propagation::Stop
-                }
-                _ => gtk4::glib::Propagation::Proceed,
             }
         });
         field.add_controller(keys);
         field.connect_activate(move |_| results.run_selected());
 
-        Self { widget, field }
+        Self {
+            widget,
+            field,
+            refresh,
+        }
+    }
+
+    pub fn refresh(&self) {
+        (self.refresh)();
     }
 
     /// The window only receives keys once the field holds focus.

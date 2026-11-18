@@ -11,10 +11,10 @@ use super::fillet::Fillet;
 use super::island::Island;
 use super::settings::Settings;
 use super::zone::Zone;
+use super::{surface, tokens};
 use crate::niri_session::{NiriSession, NiriSessionSnapshot};
 use crate::services::island_state::Layer;
 use crate::services::notifications::NotificationService;
-use super::{surface, tokens};
 
 pub struct Bar {
     pub window: gtk4::ApplicationWindow,
@@ -37,7 +37,12 @@ impl Bar {
         let stage = gtk4::Fixed::new();
         window.set_child(Some(&stage));
 
-        let island = Island::new(Rc::clone(&settings), true, notifications, Arc::clone(&session));
+        let island = Island::new(
+            Rc::clone(&settings),
+            true,
+            notifications,
+            Arc::clone(&session),
+        );
         let fillets = [Fillet::new(true), Fillet::new(false)];
         stage.put(&island.capsule, 0.0, 0.0);
         for fillet in &fillets {
@@ -56,7 +61,11 @@ impl Bar {
         island.connect_keyboard({
             let window = window.clone();
             move |held| {
-                window.set_keyboard_mode(if held { KeyboardMode::Exclusive } else { KeyboardMode::None });
+                window.set_keyboard_mode(if held {
+                    KeyboardMode::Exclusive
+                } else {
+                    KeyboardMode::None
+                });
             }
         });
         // Escape closes whatever panel is open, whichever widget has focus.
@@ -74,9 +83,19 @@ impl Bar {
         });
         window.add_controller(escape);
 
-        let output = monitor.connector().map(|name| name.to_string()).unwrap_or_default();
+        let output = monitor
+            .connector()
+            .map(|name| name.to_string())
+            .unwrap_or_default();
         let zones: [Option<Rc<Zone>>; 2] = ["left", "right"].map(|side| {
-            Zone::new(&settings, side, &output, Arc::clone(&session), Rc::clone(&open_panel)).map(|zone| {
+            Zone::new(
+                &settings,
+                side,
+                &output,
+                Arc::clone(&session),
+                Rc::clone(&open_panel),
+            )
+            .map(|zone| {
                 stage.put(zone.widget(), 0.0, 0.0);
                 Rc::new(zone)
             })
@@ -90,7 +109,11 @@ impl Bar {
             move || {
                 let (width, height) = island.size();
                 let left = (screen_width - width) / 2;
-                let top = if settings.notched() { 0 } else { settings.bar_margin };
+                let top = if settings.notched() {
+                    0
+                } else {
+                    settings.bar_margin
+                };
                 stage.move_(&island.capsule, f64::from(left), f64::from(top));
 
                 let color = island.surface_color().gdk();
@@ -103,7 +126,11 @@ impl Bar {
 
                 // Grouped: the sides hug the island and give way when it takes
                 // the band; the lane is centred on the island's rest line.
-                let lane = if settings.notched() { settings.bar_margin / 2 } else { settings.bar_margin };
+                let lane = if settings.notched() {
+                    settings.bar_margin / 2
+                } else {
+                    settings.bar_margin
+                };
                 let away = island.layer() != Layer::Modules;
                 if let Some(zone) = &zones[0] {
                     let x = left - tokens::CAPSULE_SPACING - zone.width();
@@ -121,7 +148,10 @@ impl Bar {
                 let band = settings.bar_margin + settings.bar_height + 8;
                 surface::set_input_rects(
                     &window,
-                    &[(0, 0, screen_width, band), (left, 0, width, top + height + 12)],
+                    &[
+                        (0, 0, screen_width, band),
+                        (left, 0, width, top + height + 12),
+                    ],
                 );
             }
         };
@@ -161,7 +191,12 @@ impl Bar {
             });
         }
 
-        Self { window, connector: output, island, zones }
+        Self {
+            window,
+            connector: output,
+            island,
+            zones,
+        }
     }
 
     pub fn update(&self, snapshot: &NiriSessionSnapshot) {
@@ -195,6 +230,8 @@ pub fn monitors() -> Vec<gdk::Monitor> {
 
 pub fn watch_monitors(callback: impl Fn() + 'static) {
     if let Some(display) = gdk::Display::default() {
-        display.monitors().connect_items_changed(move |_, _, _, _| callback());
+        display
+            .monitors()
+            .connect_items_changed(move |_, _, _, _| callback());
     }
 }

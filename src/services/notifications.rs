@@ -582,10 +582,10 @@ fn present(shared: &Arc<Shared>, toast: Toast) -> u32 {
     {
         let mut guard = shared.state.lock().unwrap();
         guard.current = Some(toast.clone());
-        guard.expiry = if timeout > 0 {
-            Some(Instant::now() + Duration::from_millis(timeout as u64))
-        } else {
+        guard.expiry = if is_critical || timeout <= 0 {
             None
+        } else {
+            Some(Instant::now() + Duration::from_millis(timeout as u64))
         };
     }
     shared.publish(NotificationEvent::Arrived(toast));

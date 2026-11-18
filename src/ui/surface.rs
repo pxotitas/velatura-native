@@ -24,7 +24,10 @@ pub fn configure(window: &gtk4::ApplicationWindow, monitor: &gdk::Monitor) {
     window.set_default_size(geometry.width(), geometry.height());
     // Development aid: lets a second instance sit below the running original
     // so the two can be compared on one screen.
-    if let Some(margin) = std::env::var("VELATURA_DEBUG_TOP_MARGIN").ok().and_then(|v| v.parse().ok()) {
+    if let Some(margin) = std::env::var("VELATURA_DEBUG_TOP_MARGIN")
+        .ok()
+        .and_then(|v| v.parse().ok())
+    {
         window.set_margin(Edge::Top, margin);
     }
     window.set_decorated(false);
@@ -40,11 +43,7 @@ pub struct Reservation {
 }
 
 impl Reservation {
-    pub fn new(
-        app: &gtk4::Application,
-        monitor: &gdk::Monitor,
-        exclusive_zone: i32,
-    ) -> Self {
+    pub fn new(app: &gtk4::Application, monitor: &gdk::Monitor, exclusive_zone: i32) -> Self {
         let window = gtk4::ApplicationWindow::new(app);
         window.init_layer_shell();
         window.set_namespace(Some(RESERVE_NAMESPACE));
@@ -64,7 +63,10 @@ impl Reservation {
         window.set_child(Some(&content));
         window.connect_map(|mapped| set_input_rects(mapped, &[]));
 
-        let connector = monitor.connector().map(|name| name.to_string()).unwrap_or_default();
+        let connector = monitor
+            .connector()
+            .map(|name| name.to_string())
+            .unwrap_or_default();
         window.present();
         Self { window, connector }
     }

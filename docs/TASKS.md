@@ -1,6 +1,6 @@
 # Backlog e estado do projeto
 
-**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada, snapshot cacheado/revisionado, bridge GTK sem polling, matching GDK↔Niri e `ApplicationRuntime` RAII. A primeira fatia de UI (barra/island/launcher) foi **arquivada em glm-made-things/** por decisão do usuário (paridade visual insuficiente, D-011); o re-port a partir do QML original ainda não começou. 53+1 testes verdes. Nenhuma funcionalidade marcada como VERIFIED.
+**Estado geral:** auditoria estática do backend concluída (61/61 serviços QML e 28/28 scripts Python ativos); implementação Rust inclui sessão Niri integrada, snapshot cacheado/revisionado, bridge GTK sem polling, matching GDK↔Niri e `ApplicationRuntime` RAII. O re-port GTK4 segue em andamento. Foram adicionadas 16 screenshots originais do shell em `docs/reference/visual/quickshell-shell/` como referência visual oficial. A Island agora tem uma primeira composição Rest com relógio e marca de mídia, Summary com MPRIS (capa, faixa, artista e transporte) ou calendário de cinco dias, e OSD alimentado por mudanças reais de volume/brilho. O espectro da Island agora usa worker Cava sob demanda com a configuração original e barras espelhadas. Isso ainda não equivale à paridade 1:1: o Control Centre editável, weather/calendar/notifications blocks completos, menus DBus/Tray e outras atividades seguem pendentes; nenhuma validação visual foi feita no runtime. O antialiasing GTK foi ajustado para escala de cinza sem hinting de grade; confirmar o resultado visual no runtime. Launcher, Settings e Dock também seguem incompletos. 65+1 testes passam em execução serial; `cargo clippy --all-targets --all-features -- -D warnings`, build `gtk-app`, fmt e `git diff --check` passam. Nenhuma funcionalidade marcada como VERIFIED.
 
 ## Fase 0 — Preparação
 
@@ -18,7 +18,7 @@
 - [x] Mapear referências entre serviços e lifecycle de startup observado.
 - [x] Extrair chaves e defaults do schema JsonAdapter.
 - [x] Catalogar módulos, painéis, settings e faces visuais.
-- [ ] Validar documentação visual com screenshots reais de cada superfície.
+- [x] Receber e arquivar 16 screenshots reais do shell (18/11/2026) em `docs/reference/visual/quickshell-shell/`; comparação visual por superfície em runtime ainda pendente.
 - [x] Auditar estaticamente a composição raiz de shell, bar/reserve, Dynamic Island host, Settings navigation, Desktop, Dock, Deck, Lock e Capture; contratos em UI_SURFACE_AUDIT.md (15/11/2026).
 - [x] Auditoria linha a linha da primeira fatia: lifecycle, Niri, monitores, Settings, áudio, rede, Bluetooth, bateria, brilho, notifications, MPRIS, clipboard e tray (15/11/2026).
 - [x] Completar auditoria linha a linha dos serviços e scripts restantes (28/28 scripts Python ativos; helpers/setup privilegiados lidos).
@@ -112,11 +112,11 @@
 ## Fase 4 — Portabilidade
 
 - [ ] Barra e módulos.
-- [ ] Dynamic Island e painéis. (primeira implementação arquivada em glm-made-things/ por paridade visual insuficiente — D-011; re-port a partir de Bar.qml/IslandRest/BarZone/WorkspacesWidget pendente)
+- [ ] Dynamic Island e painéis: `IslandRest` agora separa relógio e atividade de mídia (capa à esquerda, relógio central e slot de espectro à direita); `IslandSummary` tem face MPRIS com capa/metadados/transporte e fallback de calendário de cinco dias; OSD de volume/brilho observa valores reais. Ainda faltam Cava real, dimensões dinâmicas de todos os módulos, Summary weather/timer/privacy, Control Centre e grid editável, menus completos, atividades, DBus/Tray e comparação visual 1:1.
 - [ ] Control center e launcher. (launcher arquivado junto com a UI — glm-made-things/launcher.rs; re-port pendente)
 - [ ] Serviços de sistema essenciais.
-- [ ] Settings.
-- [ ] Dock.
+- [ ] Settings: janela GTK inicial e leitura/persistência das 108 chaves já implementadas; faltam reproduzir fielmente as 14 páginas, controles, validações e fluxos originais.
+- [ ] Dock nativo — portar `DockService`, `DockItem.qml` e `DockMenu.qml` para Rust + GTK4/layer-shell com paridade visual e funcional 1:1; reproduzir geometria/edge/alignment, ícones e tamanhos, apps fixados e ordenação, matching de janelas e indicadores de execução, magnificação, opacidade/ground, autohide/reveal, menus de contexto e ações, integração com launcher, multi-monitor e persistência de Settings. Não considerar concluído com mock ou janela GTK comum.
 - [ ] Desktop widgets e deck.
 - [ ] Lock screen.
 - [ ] Capture.
