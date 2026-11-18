@@ -8,6 +8,7 @@ pub mod clock;
 pub mod css;
 pub mod fillet;
 pub mod island;
+pub mod launcher_panel;
 pub mod motion;
 pub mod notification_layer;
 pub mod palette;
@@ -105,7 +106,6 @@ impl Shell {
                     monitor,
                     Rc::clone(&self.settings),
                     Arc::clone(&self.session),
-                    Rc::new(|_panel: &str| {}),
                     Rc::clone(&self.notifications),
                 );
                 bar.update(&self.session.snapshot());

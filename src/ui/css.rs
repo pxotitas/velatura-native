@@ -75,7 +75,13 @@ fn render(settings: &Settings, fonts: &Fonts, p: &Palette) -> String {
          .toast-cell-first {{ font-family: \"{family}\"; font-size: {regular}px; font-weight: 600; color: {accent}; }}\
          .toast-glyph {{ font-family: \"{mono}\"; font-size: 17px; color: {accent}; }}\
          .toast-glyph-bad {{ font-family: \"{mono}\"; font-size: 17px; color: {bad}; }}\
-         .toast-hairline {{ background: {rim}; }}",
+         .toast-hairline {{ background: {rim}; }}\
+         .panel-rule {{ background: {rim}; }}\
+         .launcher-glyph {{ font-family: \"{mono}\"; font-size: 17px; color: {accent}; }}\
+         .launcher-field {{ font-family: \"{family}\"; font-size: 16px; color: {text}; background: none; \
+            border: none; box-shadow: none; outline: none; caret-color: {accent}; min-height: 0; padding: 0; }}\
+         .launcher-field selection {{ background: {accent}; color: {accent_text}; }}\
+         .launcher-field placeholder {{ color: {muted}; }}",
         regular = tokens::FONT_SIZE_REGULAR,
         small = tokens::FONT_SIZE_SMALL,
         accent = p.accent.css(),

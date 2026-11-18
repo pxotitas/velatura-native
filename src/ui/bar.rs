@@ -3,6 +3,7 @@
 
 use gtk4::gdk;
 use gtk4::prelude::*;
+use gtk4_layer_shell::{KeyboardMode, LayerShell};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -28,7 +29,6 @@ impl Bar {
         monitor: &gdk::Monitor,
         settings: Rc<Settings>,
         session: Arc<NiriSession>,
-        open_panel: Rc<dyn Fn(&str)>,
         notifications: Rc<NotificationService>,
     ) -> Self {
         let window = gtk4::ApplicationWindow::new(app);
@@ -44,6 +44,35 @@ impl Bar {
             stage.put(fillet, 0.0, 0.0);
             fillet.set_visible(settings.notched());
         }
+
+        let open_panel: Rc<dyn Fn(&str)> = {
+            let weak = Rc::downgrade(&island);
+            Rc::new(move |panel: &str| {
+                if let Some(island) = weak.upgrade() {
+                    island.toggle_panel(panel);
+                }
+            })
+        };
+        island.connect_keyboard({
+            let window = window.clone();
+            move |held| {
+                window.set_keyboard_mode(if held { KeyboardMode::Exclusive } else { KeyboardMode::None });
+            }
+        });
+        // Escape closes whatever panel is open, whichever widget has focus.
+        let escape = gtk4::EventControllerKey::new();
+        escape.set_propagation_phase(gtk4::PropagationPhase::Capture);
+        escape.connect_key_pressed({
+            let island = Rc::clone(&island);
+            move |_, key, _, _| {
+                if key == gdk::Key::Escape && island.panel_is_open() {
+                    island.close_panel();
+                    return gtk4::glib::Propagation::Stop;
+                }
+                gtk4::glib::Propagation::Proceed
+            }
+        });
+        window.add_controller(escape);
 
         let output = monitor.connector().map(|name| name.to_string()).unwrap_or_default();
         let zones: [Option<Rc<Zone>>; 2] = ["left", "right"].map(|side| {
@@ -124,6 +153,13 @@ impl Bar {
 
         island.sync_layer();
         window.present();
+        // Development aid: opens a panel at startup, for screenshots.
+        if let Ok(panel) = std::env::var("VELATURA_DEBUG_OPEN_PANEL") {
+            let island = Rc::clone(&island);
+            gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(600), move || {
+                island.open_panel(&panel);
+            });
+        }
 
         Self { window, connector: output, island, zones }
     }
