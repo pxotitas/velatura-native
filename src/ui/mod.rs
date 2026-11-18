@@ -9,6 +9,8 @@ pub mod css;
 pub mod fillet;
 pub mod island;
 pub mod launcher_panel;
+pub mod launcher_results;
+pub mod launcher_store;
 pub mod motion;
 pub mod notification_layer;
 pub mod palette;

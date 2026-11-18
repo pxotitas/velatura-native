@@ -77,6 +77,11 @@ fn render(settings: &Settings, fonts: &Fonts, p: &Palette) -> String {
          .toast-glyph-bad {{ font-family: \"{mono}\"; font-size: 17px; color: {bad}; }}\
          .toast-hairline {{ background: {rim}; }}\
          .panel-rule {{ background: {rim}; }}\
+         .launcher-empty {{ font-family: \"{family}\"; font-size: {small}px; color: {muted}; }}\
+         .launcher-row-name {{ font-family: \"{family}\"; font-size: {regular}px; color: {text}; }}\
+         .launcher-row-subtitle {{ font-family: \"{family}\"; font-size: {small}px; color: {muted}; }}\
+         .launcher-row-pin {{ font-family: \"{mono}\"; font-size: 12px; color: {muted}; }}\
+         .launcher-row-glyph {{ font-family: \"{mono}\"; font-size: 14px; color: {accent}; }}\
          .launcher-glyph {{ font-family: \"{mono}\"; font-size: 17px; color: {accent}; }}\
          .launcher-field {{ font-family: \"{family}\"; font-size: 16px; color: {text}; background: none; \
             border: none; box-shadow: none; outline: none; caret-color: {accent}; min-height: 0; padding: 0; }}\

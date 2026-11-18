@@ -15,6 +15,7 @@ use std::sync::Arc;
 use super::capsule::Capsule;
 use super::clock;
 use super::launcher_panel::{self, LauncherPanel};
+use super::launcher_store::Store;
 use super::motion::{Curve, Tween};
 use super::notification_layer::NotificationLayer;
 use super::settings::Settings;
@@ -36,6 +37,8 @@ pub struct Island {
     notification: NotificationLayer,
     service: Rc<NotificationService>,
     panel_host: gtk4::Box,
+    store: Rc<RefCell<Store>>,
+    this: Weak<Island>,
     panel: Rc<RefCell<Option<LauncherPanel>>>,
     panel_open: Rc<Cell<bool>>,
     keyboard: Cell<bool>,
@@ -71,7 +74,7 @@ impl Island {
         let notification = NotificationLayer::new(Rc::clone(&service), session);
         stack.add_named(&notification.widget, Some("notification"));
         let panel_host = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-        panel_host.set_valign(gtk4::Align::Start);
+        panel_host.set_vexpand(true);
         stack.add_named(&panel_host, Some("panel"));
 
         let island = Rc::new_cyclic(|weak: &Weak<Island>| {
@@ -96,6 +99,8 @@ impl Island {
                 notification,
                 service,
                 panel_host,
+                store: Rc::new(RefCell::new(Store::new(&settings))),
+                this: weak.clone(),
                 panel: Rc::default(),
                 panel_open: Rc::default(),
                 keyboard: Cell::new(false),
@@ -277,7 +282,18 @@ impl Island {
         }
         self.panel_open.set(true);
         if self.panel.borrow().is_none() {
-            let launcher = LauncherPanel::new();
+            // The applications are rescanned each time it opens, as the
+            // original does.
+            self.store.borrow_mut().refresh();
+            let this = self.this.clone();
+            let launcher = LauncherPanel::new(
+                Rc::clone(&self.store),
+                Rc::new(move || {
+                    if let Some(island) = this.upgrade() {
+                        island.close_panel();
+                    }
+                }),
+            );
             self.panel_host.append(&launcher.widget);
             *self.panel.borrow_mut() = Some(launcher);
         }
